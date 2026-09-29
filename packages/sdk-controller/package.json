@@ -1,0 +1,21 @@
+{
+  "name": "@platform/sdk-controller",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --clean"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@colyseus/sdk": "^0.18.4",
+    "@platform/sdk-core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1"
+  },
+  "types": "dist/index.d.ts"
+}

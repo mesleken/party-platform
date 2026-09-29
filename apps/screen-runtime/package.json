@@ -1,0 +1,21 @@
+{
+  "name": "screen-runtime",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.6",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  },
+  "dependencies": {
+    "@platform/sdk-core": "workspace:*",
+    "@platform/sdk-screen": "workspace:*",
+    "qrcode": "^1.5.4"
+  }
+}
