@@ -7,6 +7,10 @@ import {
   QUIZ_QUESTIONS,
   QuizQuestion
 } from '@platform/sdk-core';
+import { MiniFootballGame } from '@games/mini-football';
+import { BluffTriviaGame } from '@games/bluff-trivia';
+import { MiniTetrisGame, type TetrisInput, type TetrisMatchSnapshot } from '@games/mini-tetris';
+import { LostAndFoundGame, type PlayerInput as LostAndFoundInput, type LostAndFoundSnapshot } from '@games/lost-and-found';
 
 export class LobbyRoom extends Room<{ state: SessionStateType }> {
   maxClients = 16; // 1 Ekran + 15 Telefon
@@ -16,6 +20,11 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
 
   private currentQuizQuestion?: QuizQuestion;
   private questionStartTime = 0;
+
+  private footballGame?: MiniFootballGame;
+  private bluffTriviaGame?: BluffTriviaGame;
+  private miniTetrisGame?: MiniTetrisGame;
+  private lostAndFoundGame?: LostAndFoundGame;
 
   onCreate(options: any) {
     this.setState(new SessionState());
@@ -48,6 +57,10 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
     this.state.quizCorrectIndex = -1;
     this.state.quizTimeLeft = 0;
 
+    // Oyun Entegrasyonları
+    this.footballGame = new MiniFootballGame(this);
+    this.bluffTriviaGame = new BluffTriviaGame(this);
+
     console.log(`[LobbyRoom] Oda oluşturuldu. Kod: ${this.roomId}`);
 
     // Hazır durumunu değiştirme
@@ -61,7 +74,15 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
 
     // Lobide oyun seçme
     this.onMessage('SELECT_GAME', (client, message: { gameId: string }) => {
-      if (message && (message.gameId === 'reaction-rush' || message.gameId === 'quiz-arena')) {
+      if (
+        message &&
+        (message.gameId === 'reaction-rush' ||
+          message.gameId === 'quiz-arena' ||
+          message.gameId === 'mini-football' ||
+          message.gameId === 'bluff-trivia' ||
+          message.gameId === 'mini-tetris' ||
+          message.gameId === 'lost-and-found')
+      ) {
         this.state.selectedGameId = message.gameId;
         console.log(`[LobbyRoom] Seçili oyun güncellendi: ${this.state.selectedGameId}`);
       }
@@ -77,6 +98,14 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
 
       if (this.state.selectedGameId === 'quiz-arena') {
         this.startQuizGame();
+      } else if (this.state.selectedGameId === 'mini-football') {
+        this.startFootballGame();
+      } else if (this.state.selectedGameId === 'bluff-trivia') {
+        this.startBluffTriviaGame();
+      } else if (this.state.selectedGameId === 'mini-tetris') {
+        this.startMiniTetrisGame();
+      } else if (this.state.selectedGameId === 'lost-and-found') {
+        this.startLostAndFoundGame();
       } else {
         this.startReactionRushGame();
       }
@@ -90,6 +119,55 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
     // Quiz Arena: Şık seçme
     this.onMessage('ANSWER_QUIZ', (client, message: { optionIndex: number }) => {
       this.handleQuizAnswer(client.sessionId, message.optionIndex);
+    });
+
+    // Mini Football Kontrolleri
+    this.onMessage('FOOTBALL_INPUT', (client, message: any) => {
+      this.footballGame?.handleInput(client, message);
+    });
+
+    this.onMessage('FOOTBALL_SWITCH', (client) => {
+      this.footballGame?.handleSwitch(client);
+    });
+
+    this.onMessage('FOOTBALL_CHOOSE_TEAM', (client, message: { team: 'blue' | 'red' }) => {
+      this.footballGame?.handleChooseTeam(client, message.team);
+    });
+
+    // Bluff Trivia Kontrolleri
+    this.onMessage('BLUFF_SETTINGS', (client, message: any) => {
+      const player = this.state.players.get(client.sessionId);
+      if (player?.isHost) {
+        this.bluffTriviaGame?.applySettings(message);
+      }
+    });
+
+    this.onMessage('SUBMIT_BLUFF', (client, message: { answer: string }) => {
+      this.bluffTriviaGame?.handlePlayerSubmitBluff(client, message?.answer);
+    });
+
+    this.onMessage('VOTE_BLUFF', (client, message: { choiceId: string }) => {
+      this.bluffTriviaGame?.handlePlayerVote(client, message?.choiceId);
+    });
+
+    // Mini Tetris Kontrolleri
+    this.onMessage('INPUT', (client, message: any) => {
+      if (this.state.activeGameId === 'mini-tetris') {
+        this.miniTetrisGame?.handleInput(client.sessionId, message);
+      } else if (this.state.activeGameId === 'lost-and-found') {
+        this.lostAndFoundGame?.handleInput(client.sessionId, message);
+      }
+    });
+
+    this.onMessage('TETRIS_INPUT', (client, message: TetrisInput) => {
+      if (this.state.activeGameId !== 'mini-tetris') return;
+      this.miniTetrisGame?.handleInput(client.sessionId, message);
+    });
+
+    // Lost & Found Kontrolleri
+    this.onMessage('LOST_AND_FOUND_INPUT', (client, message: LostAndFoundInput) => {
+      if (this.state.activeGameId !== 'lost-and-found') return;
+      this.lostAndFoundGame?.handleInput(client.sessionId, message);
     });
 
     // Lobiye geri dönme
@@ -346,11 +424,136 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
   }
 
   // ═══════════════════════════════════════════════════════════
+  // OYUN 3: MINI FOOTBALL (5v5 ARCADE FUTBOL)
+  // ═══════════════════════════════════════════════════════════
+
+  private startFootballGame() {
+    console.log(`[LobbyRoom] Mini Football oyunu başlatılıyor!`);
+    this.clearTimers();
+    this.state.activeGameId = 'mini-football';
+    this.state.status = 'football_playing';
+    this.footballGame?.start();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // OYUN 4: BLUFF TRIVIA (BLÖF BİLGİ YARIŞMASI)
+  // ═══════════════════════════════════════════════════════════
+
+  private startBluffTriviaGame() {
+    console.log(`[LobbyRoom] Bluff Trivia oyunu başlatılıyor!`);
+    this.clearTimers();
+    this.state.activeGameId = 'bluff-trivia';
+    this.state.status = 'bluff_playing';
+    this.bluffTriviaGame?.start();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // OYUN 5: MINI TETRIS (BATTLE ROYALE TETRIS)
+  // ═══════════════════════════════════════════════════════════
+
+  private startMiniTetrisGame() {
+    console.log(`[LobbyRoom] Mini Tetris oyunu başlatılıyor!`);
+    this.clearTimers();
+    this.state.activeGameId = 'mini-tetris';
+    this.state.status = 'tetris_playing';
+
+    this.miniTetrisGame = new MiniTetrisGame({
+      broadcast: (type, payload: any) => {
+        this.broadcast(type, payload);
+
+        // Oyun bittiğinde Colyseus state'ini podyum için senkronize et
+        if (payload?.gameId === 'mini-tetris' && payload?.state?.phase === 'finished') {
+          const snap: TetrisMatchSnapshot = payload.state;
+          snap.players.forEach((p) => {
+            const player = this.state.players.get(p.id);
+            if (player) {
+              player.score = p.score;
+              player.rank = p.place;
+            }
+          });
+
+          if (snap.winnerId) {
+            const winner = this.state.players.get(snap.winnerId);
+            this.state.winnerNickname = winner?.nickname || 'Bilinmeyen';
+          }
+        }
+      },
+      sendToPlayer: (sessionId, type, payload) => {
+        const client = this.clients.find((candidate) => candidate.sessionId === sessionId);
+        client?.send(type, payload);
+      },
+    });
+
+    this.state.players.forEach((player: PlayerStateType) => {
+      if (player.isConnected) {
+        player.score = 0;
+        player.rank = 0;
+        this.miniTetrisGame?.addPlayer(player.id, player.nickname);
+      }
+    });
+
+    this.miniTetrisGame.start();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // OYUN 5: LOST & FOUND (CO-OP ADVENTURE PLATFORMER)
+  // ═══════════════════════════════════════════════════════════
+
+  private startLostAndFoundGame() {
+    console.log(`[LobbyRoom] Lost & Found oyunu başlatılıyor!`);
+    this.clearTimers();
+    this.state.activeGameId = 'lost-and-found';
+    this.state.status = 'lost_and_found_playing';
+    this.state.winnerNickname = '';
+
+    this.lostAndFoundGame = new LostAndFoundGame({
+      broadcast: (type: string, payload: any) => {
+        this.broadcast(type, payload);
+
+        // Seviye tamamlandığında podyum için state senkronizasyonu
+        if (payload?.gameId === 'lost-and-found' && payload?.state?.phase === 'completed') {
+          const snap: LostAndFoundSnapshot = payload.state;
+          snap.players.forEach((p) => {
+            const player = this.state.players.get(p.id);
+            if (player) {
+              player.score = p.score;
+            }
+          });
+          this.state.winnerNickname = 'Milo & Nia (Ekip)';
+          setTimeout(() => {
+            if (this.state.activeGameId === 'lost-and-found') {
+              this.endGame();
+            }
+          }, 3500);
+        }
+      },
+      sendToPlayer: (sessionId: string, type: string, payload: any) => {
+        const client = this.clients.find((candidate) => candidate.sessionId === sessionId);
+        client?.send(type, payload);
+      },
+    });
+
+    this.state.players.forEach((player: PlayerStateType) => {
+      if (player.isConnected) {
+        player.score = 0;
+        player.rank = 0;
+        this.lostAndFoundGame?.addPlayer(player.id, player.nickname);
+      }
+    });
+
+    this.lostAndFoundGame.start();
+  }
+
+  // ═══════════════════════════════════════════════════════════
   // ORTAK METOTLAR: OYUN SONU VE LOBİ
   // ═══════════════════════════════════════════════════════════
 
   private endGame() {
     this.clearTimers();
+    this.footballGame?.stop();
+    this.bluffTriviaGame?.stop();
+    this.miniTetrisGame?.stop();
+    this.lostAndFoundGame?.stop();
     this.state.status = 'game_over';
 
     let topScore = -1;
@@ -368,6 +571,12 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
 
   private resetToLobby() {
     this.clearTimers();
+    this.footballGame?.stop();
+    this.bluffTriviaGame?.stop();
+    this.miniTetrisGame?.stop();
+    this.miniTetrisGame = undefined;
+    this.lostAndFoundGame?.stop();
+    this.lostAndFoundGame = undefined;
     this.state.status = 'lobby';
     this.state.activeGameId = '';
     this.state.currentRound = 0;
@@ -382,6 +591,13 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
       p.selectedOption = -1;
       p.isCorrect = false;
       p.streak = 0;
+      p.controlledPlayerId = '';
+      p.bluffAnswer = '';
+      p.bluffSubmitted = false;
+      p.hasVotedBluff = false;
+      p.votedBluffId = '';
+      p.roundBluffGains = 0;
+      p.trickedCount = 0;
     });
 
     console.log(`[LobbyRoom] Lobiye dönüldü.`);
@@ -405,7 +621,7 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
   onJoin(client: Client, options: any) {
     console.log(`[LobbyRoom] İstemci bağlandı: ${client.sessionId}`);
 
-    const role = options.role || 'controller';
+    const role = options.role || (options.isScreen ? 'screen' : 'controller');
 
     if (role === 'controller') {
       const player = new PlayerState();
@@ -421,10 +637,12 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
       player.selectedOption = -1;
       player.isCorrect = false;
       player.streak = 0;
+      player.team = '';
+      player.controlledPlayerId = '';
 
       let hostExists = false;
       this.state.players.forEach((p: PlayerStateType) => {
-        if (p.isHost) hostExists = true;
+        if (p.isHost && p.isConnected) hostExists = true;
       });
 
       if (!hostExists) {
@@ -436,6 +654,9 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
   }
 
   async onLeave(client: Client, code?: number) {
+    this.footballGame?.handlePlayerLeave(client);
+    this.miniTetrisGame?.removePlayer(client.sessionId);
+    this.lostAndFoundGame?.removePlayer(client.sessionId);
     const player = this.state.players.get(client.sessionId);
     if (player) {
       player.isConnected = false;
@@ -450,14 +671,31 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
         player.isConnected = true;
         console.log(`[LobbyRoom] Oyuncu geri geldi: ${player.nickname}`);
       } catch (e) {
+        const wasHost = player.isHost;
         this.state.players.delete(client.sessionId);
         console.log(`[LobbyRoom] Oyuncu odadan ayrıldı: ${player?.nickname}`);
+
+        if (wasHost) {
+          for (const remaining of this.state.players.values()) {
+            if (remaining.isConnected) {
+              remaining.isHost = true;
+              console.log(`[LobbyRoom] Yeni Host atandı: ${remaining.nickname}`);
+              break;
+            }
+          }
+        }
       }
     }
   }
 
   onDispose() {
     this.clearTimers();
+    this.footballGame?.stop();
+    this.bluffTriviaGame?.stop();
+    this.miniTetrisGame?.stop();
+    this.miniTetrisGame = undefined;
+    this.lostAndFoundGame?.stop();
+    this.lostAndFoundGame = undefined;
     console.log(`[LobbyRoom] Oda kapatıldı: ${this.roomId}`);
   }
 }

@@ -13,6 +13,10 @@
   "dependencies": {
     "@colyseus/core": "^0.18.17",
     "@colyseus/ws-transport": "^0.18.4",
+    "@games/bluff-trivia": "workspace:*",
+    "@games/lost-and-found": "workspace:*",
+    "@games/mini-football": "workspace:*",
+    "@games/mini-tetris": "workspace:*",
     "@platform/sdk-core": "workspace:*",
     "cors": "^2.8.6",
     "express": "^5.2.1"

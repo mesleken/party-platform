@@ -265,3 +265,232 @@ button.host-start-btn {
   color: #fbbf24;
   font-weight: 600;
 }
+
+/* ─── MINI FOOTBALL GAMEPAD CONTROLLER ─── */
+.football-gamepad {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  box-sizing: border-box;
+  background: radial-gradient(circle at center, #1e293b, #0f172a);
+  user-select: none;
+  touch-action: none;
+  overflow: hidden;
+}
+
+.gamepad-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 1.2rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 2px solid #334155;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.gamepad-scoreboard {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 1.3rem;
+  background: #1e293b;
+  padding: 0.3rem 0.8rem;
+  border-radius: 0.6rem;
+  border: 1px solid #475569;
+}
+
+.gamepad-player-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 0.5rem;
+}
+
+.gamepad-player-badge.blue {
+  background: rgba(37, 99, 235, 0.25);
+  color: #60a5fa;
+  border: 1px solid #3b82f6;
+}
+
+.gamepad-player-badge.red {
+  background: rgba(220, 38, 38, 0.25);
+  color: #f87171;
+  border: 1px solid #ef4444;
+}
+
+.gamepad-has-ball {
+  background: #facc15;
+  color: #0f172a;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.3rem;
+  font-weight: 900;
+  font-size: 0.75rem;
+  animation: pulse 1s infinite alternate;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); }
+  100% { transform: scale(1.05); }
+}
+
+.gamepad-main-controls {
+  flex: 1;
+  display: flex;
+  position: relative;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+}
+
+/* ─── VIRTUAL JOYSTICK ─── */
+.joystick-container {
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, rgba(30, 41, 59, 0.6) 100%);
+  border: 3px solid rgba(56, 189, 248, 0.3);
+  position: relative;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(56, 189, 248, 0.2);
+}
+
+.joystick-thumb {
+  width: 65px;
+  height: 65px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #38bdf8, #0284c7);
+  box-shadow: 0 4px 15px rgba(2, 132, 199, 0.6);
+  border: 2px solid white;
+  position: absolute;
+  pointer-events: none;
+  transition: transform 0.05s ease-out;
+}
+
+/* ─── FIFA ACTION BUTTONS ─── */
+.buttons-cluster {
+  position: relative;
+  width: 220px;
+  height: 220px;
+}
+
+.action-btn {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  color: white;
+  font-weight: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  touch-action: none;
+  font-size: 0.95rem;
+  padding: 0;
+  margin: 0;
+}
+
+.action-btn:active {
+  transform: scale(0.92);
+  filter: brightness(1.2);
+}
+
+.btn-pass {
+  bottom: 10px;
+  left: 10px;
+  background: linear-gradient(135deg, #22c55e, #15803d);
+}
+
+.btn-shoot {
+  bottom: 10px;
+  right: 10px;
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
+.btn-tackle {
+  top: 10px;
+  left: 10px;
+  background: linear-gradient(135deg, #eab308, #ca8a04);
+  color: #0f172a;
+}
+
+.btn-switch {
+  top: 10px;
+  right: 10px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+.btn-special {
+  position: absolute;
+  top: 75px;
+  left: 75px;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #a855f7, #7e22ce);
+  border-color: #c084fc;
+  font-size: 0.8rem;
+}
+
+/* Shot charge bar */
+.shot-charge-meter {
+  position: absolute;
+  bottom: 95px;
+  right: 15px;
+  width: 62px;
+  height: 8px;
+  background: #334155;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid white;
+}
+
+.shot-charge-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+  transition: width 0.05s linear;
+}
+
+/* Goal Splash Overlay */
+.goal-flash-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.goal-flash-text {
+  font-size: 4rem;
+  font-weight: 900;
+  color: #facc15;
+  text-shadow: 0 0 30px rgba(250, 204, 21, 0.7);
+  margin: 0;
+}
+
+.goal-scorer-text {
+  font-size: 1.8rem;
+  color: white;
+  margin-top: 0.5rem;
+}

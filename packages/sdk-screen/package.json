@@ -4,7 +4,7 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsup src/index.ts --format esm --clean"
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",

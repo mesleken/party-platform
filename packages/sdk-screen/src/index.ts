@@ -12,10 +12,18 @@ export class ScreenSDK {
   /** Yeni bir oturum (Oda) oluşturur */
   async createSession(): Promise<string> {
     try {
-      this.room = await this.client.joinOrCreate<SessionStateType>('lobby', { role: 'screen' });
+      this.room = await this.client.create<SessionStateType>('lobby', { role: 'screen' });
       
       this.room.onStateChange((state) => {
         this.onStateChange(state);
+      });
+
+      this.room.onMessage('STATE', (payload: any) => {
+        if (payload?.gameId === 'mini-tetris') {
+          this.onTetrisState(payload.state);
+        } else if (payload?.gameId === 'lost-and-found') {
+          this.onLostAndFoundState(payload.state);
+        }
       });
 
       return this.room.roomId; // 6 haneli kod
@@ -27,6 +35,8 @@ export class ScreenSDK {
 
   // Override this
   public onStateChange: (state: SessionStateType) => void = () => {};
+  public onTetrisState: (state: any) => void = () => {};
+  public onLostAndFoundState: (state: any) => void = () => {};
 
   public selectGame(gameId: string) {
     this.room?.send('SELECT_GAME', { gameId });

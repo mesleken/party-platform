@@ -3,6 +3,6 @@ packages:
   - 'packages/*'
   - 'games/*'
 allowBuilds:
-  esbuild: set this to true or false
-  msgpackr-extract: set this to true or false
-  unrs-resolver: set this to true or false
+  esbuild: true
+  msgpackr-extract: true
+  unrs-resolver: true

@@ -25,3 +25,16 @@ export interface FinalResult {
   winnerId?: string;
   standings: Array<{ playerId: string; score: number }>;
 }
+
+export interface FootballInput {
+  moveX: number;
+  moveY: number;
+  pass: boolean;
+  shoot: boolean;
+  shootPower?: number; // 0 to 1
+  tackle: boolean;
+  switchPlayer: boolean;
+  special: boolean;
+  seq?: number;
+}
+

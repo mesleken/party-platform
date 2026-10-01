@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@games/lost-and-found": "workspace:*",
+    "@games/mini-tetris": "workspace:*",
     "@platform/sdk-controller": "workspace:*",
     "@platform/sdk-core": "workspace:*",
     "preact": "^10.29.8"

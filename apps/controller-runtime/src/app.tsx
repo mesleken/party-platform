@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'preact/hooks';
 import { ControllerSDK } from '@platform/sdk-controller';
 import type { SessionStateType } from '@platform/sdk-core';
+import { FootballGamepad } from './FootballGamepad';
+import { BluffTriviaController } from './BluffTriviaController';
+import { MiniTetrisGamepad } from './MiniTetrisGamepad';
+import { LostAndFoundGamepad } from './LostAndFoundGamepad';
 
 const sdk = new ControllerSDK(`http://${window.location.hostname}:2567`);
 
@@ -11,7 +15,9 @@ export function App() {
   const [errorMsg, setErrorMsg] = useState('');
 
   // Canlı Oyun Durumu
+  const [rawState, setRawState] = useState<SessionStateType | null>(null);
   const [gameStatus, setGameStatus] = useState('lobby');
+  const [activeGameId, setActiveGameId] = useState('');
   const [selectedGameId, setSelectedGameId] = useState('reaction-rush');
   const [currentRound, setCurrentRound] = useState(1);
   const [totalRounds, setTotalRounds] = useState(3);
@@ -21,6 +27,10 @@ export function App() {
   // Quiz Durumu
   const [quizTimeLeft, setQuizTimeLeft] = useState(15);
   const [quizCorrectIndex, setQuizCorrectIndex] = useState(-1);
+
+  // Football Durumu
+  const [myTeam, setMyTeam] = useState<'blue' | 'red' | ''>('');
+  const [controlledPlayerId, setControlledPlayerId] = useState('');
 
   // Oyuncunun Kendi Durumu
   const [isReady, setIsReady] = useState(false);
@@ -33,6 +43,44 @@ export function App() {
   const [isCorrect, setIsCorrect] = useState(false);
   const [streak, setStreak] = useState(0);
 
+  // Colyseus State Revision Tick (force re-render on nested state mutations)
+  const [tick, setTick] = useState(0);
+
+  // Bluff Ayarları (Yönetici)
+  const [bluffCategory, setBluffCategory] = useState<'genel' | 'cografya' | 'tarih' | 'spor' | 'sinema' | 'bilim' | 'arkadas'>('genel');
+  const [bluffSubmitTime, setBluffSubmitTime] = useState(30);
+  const [bluffVoteTime, setBluffVoteTime] = useState(20);
+  const [bluffRevealTime, setBluffRevealTime] = useState(10);
+  const [bluffRounds, setBluffRounds] = useState(5);
+
+  const handleUpdateBluffSettings = (updated: Partial<{
+    category: 'genel' | 'cografya' | 'tarih' | 'spor' | 'sinema' | 'bilim' | 'arkadas';
+    submittingTimeSeconds: number;
+    votingTimeSeconds: number;
+    revealDurationSeconds: number;
+    totalRounds: number;
+  }>) => {
+    const newCat = updated.category ?? bluffCategory;
+    const newSub = updated.submittingTimeSeconds ?? bluffSubmitTime;
+    const newVote = updated.votingTimeSeconds ?? bluffVoteTime;
+    const newRev = updated.revealDurationSeconds ?? bluffRevealTime;
+    const newRounds = updated.totalRounds ?? bluffRounds;
+
+    if (updated.category) setBluffCategory(updated.category);
+    if (updated.submittingTimeSeconds) setBluffSubmitTime(updated.submittingTimeSeconds);
+    if (updated.votingTimeSeconds) setBluffVoteTime(updated.votingTimeSeconds);
+    if (updated.revealDurationSeconds) setBluffRevealTime(updated.revealDurationSeconds);
+    if (updated.totalRounds) setBluffRounds(updated.totalRounds);
+
+    sdk.updateBluffSettings({
+      category: newCat,
+      submittingTimeSeconds: newSub,
+      votingTimeSeconds: newVote,
+      revealDurationSeconds: newRev,
+      totalRounds: newRounds
+    });
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
@@ -41,7 +89,10 @@ export function App() {
     }
 
     sdk.onStateChange = (state: SessionStateType) => {
+      setRawState(state);
+      setTick((t) => t + 1);
       setGameStatus(state.status || 'lobby');
+      setActiveGameId(state.activeGameId || '');
       setSelectedGameId(state.selectedGameId || 'reaction-rush');
       setCurrentRound(state.currentRound || 1);
       setTotalRounds(state.totalRounds || 3);
@@ -70,6 +121,8 @@ export function App() {
         setSelectedOption(found.selectedOption !== undefined ? found.selectedOption : -1);
         setIsCorrect(Boolean(found.isCorrect));
         setStreak(found.streak || 0);
+        setMyTeam((found.team as any) || '');
+        setControlledPlayerId(found.controlledPlayerId || '');
       }
     };
   }, [nickname]);
@@ -189,14 +242,264 @@ export function App() {
               class={`lobby-tab-btn ${selectedGameId === 'quiz-arena' ? 'active' : ''}`}
               onClick={() => handleSelectGame('quiz-arena')}
             >
-              🧠 Bilgi (Quiz)
+              🧠 Quiz
+            </button>
+            <button
+              class={`lobby-tab-btn ${selectedGameId === 'mini-football' ? 'active' : ''}`}
+              onClick={() => handleSelectGame('mini-football')}
+            >
+              ⚽ Futbol
+            </button>
+            <button
+              class={`lobby-tab-btn ${selectedGameId === 'bluff-trivia' ? 'active' : ''}`}
+              onClick={() => handleSelectGame('bluff-trivia')}
+            >
+              🎭 Blöf
+            </button>
+            <button
+              class={`lobby-tab-btn ${selectedGameId === 'mini-tetris' ? 'active' : ''}`}
+              onClick={() => handleSelectGame('mini-tetris')}
+            >
+              🧱 Tetris
+            </button>
+            <button
+              class={`lobby-tab-btn ${selectedGameId === 'lost-and-found' ? 'active' : ''}`}
+              onClick={() => handleSelectGame('lost-and-found')}
+            >
+              🧸 Lost & Found
             </button>
           </div>
         )}
 
         {!isHost && (
           <div style={{ color: '#38bdf8', marginBottom: '1.2rem', fontWeight: 700 }}>
-            Seçili Oyun: {selectedGameId === 'quiz-arena' ? '🧠 Quiz Arena' : '⚡ Reaction Rush'}
+            Seçili Oyun:{' '}
+            {selectedGameId === 'quiz-arena'
+              ? '🧠 Quiz Arena'
+              : selectedGameId === 'mini-football'
+              ? '⚽ Mini Football'
+              : selectedGameId === 'bluff-trivia'
+              ? '🎭 Bluff Trivia'
+              : selectedGameId === 'mini-tetris'
+              ? '🧱 Mini Tetris'
+              : selectedGameId === 'lost-and-found'
+              ? '🧸 Lost & Found'
+              : '⚡ Reaction Rush'}
+          </div>
+        )}
+
+        {/* Futbol Takım Seçimi */}
+        {selectedGameId === 'mini-football' && (
+          <div style={{ marginBottom: '1.2rem', width: '100%', maxWidth: '320px' }}>
+            <div style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '0.4rem', fontWeight: 600 }}>
+              Takımını Seç:
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="button"
+                style={{
+                  background: myTeam === 'blue' ? '#2563eb' : '#1e293b',
+                  border: '2px solid #3b82f6',
+                  color: 'white',
+                  padding: '0.6rem 0.4rem',
+                  fontSize: '1rem',
+                  margin: 0,
+                  flex: 1
+                }}
+                onClick={() => sdk.chooseFootballTeam('blue')}
+              >
+                🔵 Mavi Takım
+              </button>
+              <button
+                type="button"
+                style={{
+                  background: myTeam === 'red' ? '#dc2626' : '#1e293b',
+                  border: '2px solid #ef4444',
+                  color: 'white',
+                  padding: '0.6rem 0.4rem',
+                  fontSize: '1rem',
+                  margin: 0,
+                  flex: 1
+                }}
+                onClick={() => sdk.chooseFootballTeam('red')}
+              >
+                🔴 Kırmızı Takım
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Bluff Trivia Host Ayarları */}
+        {selectedGameId === 'bluff-trivia' && isHost && (
+          <div
+            style={{
+              background: '#1e293b',
+              border: '2px solid #8b5cf6',
+              borderRadius: '1rem',
+              padding: '1rem',
+              width: '100%',
+              maxWidth: '360px',
+              marginBottom: '1.2rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              textAlign: 'left',
+              boxSizing: 'border-box'
+            }}
+          >
+            <div style={{ color: '#c084fc', fontWeight: 800, fontSize: '1.1rem', textAlign: 'center' }}>
+              ⚙️ Blöf Oyunu Ayarları
+            </div>
+
+            {/* Kategori Seçimi */}
+            <div>
+              <div style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.35rem' }}>
+                Kategori Seçimi:
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
+                {[
+                  { id: 'genel', label: '🌐 Genel Kültür' },
+                  { id: 'cografya', label: '🌍 Coğrafya' },
+                  { id: 'tarih', label: '🏛️ Tarih' },
+                  { id: 'spor', label: '⚽ Spor' },
+                  { id: 'sinema', label: '🎬 Sinema' },
+                  { id: 'bilim', label: '🔬 Bilim' },
+                  { id: 'arkadas', label: '🌟 Özel Arkadaş Modu' }
+                ].map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    style={{
+                      background: bluffCategory === cat.id ? '#8b5cf6' : '#0f172a',
+                      border: `1.5px solid ${bluffCategory === cat.id ? '#c084fc' : '#334155'}`,
+                      color: 'white',
+                      padding: '0.45rem 0.5rem',
+                      fontSize: '0.85rem',
+                      fontWeight: bluffCategory === cat.id ? 800 : 500,
+                      borderRadius: '0.5rem',
+                      margin: 0,
+                      gridColumn: cat.id === 'arkadas' ? 'span 2' : 'span 1'
+                    }}
+                    onClick={() => handleUpdateBluffSettings({ category: cat.id as any })}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Süreler ve Round Sayısı */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+              <div>
+                <div style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.2rem' }}>
+                  Blöf Yazma Süresi:
+                </div>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  {[20, 30, 45, 60].map((sec) => (
+                    <button
+                      key={sec}
+                      type="button"
+                      style={{
+                        flex: 1,
+                        background: bluffSubmitTime === sec ? '#8b5cf6' : '#0f172a',
+                        border: `1px solid ${bluffSubmitTime === sec ? '#c084fc' : '#334155'}`,
+                        color: 'white',
+                        padding: '0.35rem 0.2rem',
+                        fontSize: '0.8rem',
+                        borderRadius: '0.4rem',
+                        margin: 0
+                      }}
+                      onClick={() => handleUpdateBluffSettings({ submittingTimeSeconds: sec })}
+                    >
+                      {sec}s
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.2rem' }}>
+                  Tur Sayısı:
+                </div>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  {[3, 5, 7].map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      style={{
+                        flex: 1,
+                        background: bluffRounds === r ? '#8b5cf6' : '#0f172a',
+                        border: `1px solid ${bluffRounds === r ? '#c084fc' : '#334155'}`,
+                        color: 'white',
+                        padding: '0.35rem 0.2rem',
+                        fontSize: '0.8rem',
+                        borderRadius: '0.4rem',
+                        margin: 0
+                      }}
+                      onClick={() => handleUpdateBluffSettings({ totalRounds: r })}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+              <div>
+                <div style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.2rem' }}>
+                  Oylama Süresi:
+                </div>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  {[15, 20, 30].map((sec) => (
+                    <button
+                      key={sec}
+                      type="button"
+                      style={{
+                        flex: 1,
+                        background: bluffVoteTime === sec ? '#8b5cf6' : '#0f172a',
+                        border: `1px solid ${bluffVoteTime === sec ? '#c084fc' : '#334155'}`,
+                        color: 'white',
+                        padding: '0.35rem 0.2rem',
+                        fontSize: '0.8rem',
+                        borderRadius: '0.4rem',
+                        margin: 0
+                      }}
+                      onClick={() => handleUpdateBluffSettings({ votingTimeSeconds: sec })}
+                    >
+                      {sec}s
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.2rem' }}>
+                  İfşa Süresi:
+                </div>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  {[8, 10, 15].map((sec) => (
+                    <button
+                      key={sec}
+                      type="button"
+                      style={{
+                        flex: 1,
+                        background: bluffRevealTime === sec ? '#8b5cf6' : '#0f172a',
+                        border: `1px solid ${bluffRevealTime === sec ? '#c084fc' : '#334155'}`,
+                        color: 'white',
+                        padding: '0.35rem 0.2rem',
+                        fontSize: '0.8rem',
+                        borderRadius: '0.4rem',
+                        margin: 0
+                      }}
+                      onClick={() => handleUpdateBluffSettings({ revealDurationSeconds: sec })}
+                    >
+                      {sec}s
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -215,6 +518,79 @@ export function App() {
       </div>
     );
   }
+
+  // ─── MINI FOOTBALL GAMEPAD EKRANI ───
+  if (
+    gameStatus === 'football_playing' ||
+    (activeGameId === 'mini-football' && gameStatus !== 'game_over' && gameStatus !== 'lobby')
+  ) {
+    return (
+      <FootballGamepad
+        tick={tick}
+        sdk={sdk}
+        myNickname={nickname}
+        myTeam={myTeam || 'blue'}
+        controlledPlayerId={controlledPlayerId}
+        matchState={rawState?.footballMatch}
+      />
+    );
+  }
+
+  // ─── BLUFF TRIVIA KONTROLCÜ EKRANI ───
+  if (
+    gameStatus === 'bluff_playing' ||
+    (activeGameId === 'bluff-trivia' && gameStatus !== 'game_over' && gameStatus !== 'lobby')
+  ) {
+    const myId = sdk.sessionId;
+    let foundMyPlayer: any = null;
+    if (rawState?.players) {
+      rawState.players.forEach((p) => {
+        if (p.id === myId || (nickname && p.nickname === nickname)) {
+          foundMyPlayer = p;
+        }
+      });
+    }
+
+    return (
+      <BluffTriviaController
+        tick={tick}
+        sdk={sdk}
+        myNickname={nickname}
+        myPlayer={foundMyPlayer}
+        matchState={rawState?.bluffTriviaMatch}
+        totalScore={score}
+      />
+    );
+  }
+
+  // ─── MINI TETRIS GAMEPAD EKRANI ───
+  if (
+    gameStatus === 'tetris_playing' ||
+    (activeGameId === 'mini-tetris' && gameStatus !== 'game_over' && gameStatus !== 'lobby')
+  ) {
+    return (
+      <MiniTetrisGamepad
+        sdk={sdk}
+        myNickname={nickname}
+        myPlayerId={sdk.sessionId}
+      />
+    );
+  }
+
+  // ─── LOST & FOUND GAMEPAD EKRANI ───
+  if (
+    gameStatus === 'lost_and_found_playing' ||
+    (activeGameId === 'lost-and-found' && gameStatus !== 'game_over' && gameStatus !== 'lobby')
+  ) {
+    return (
+      <LostAndFoundGamepad
+        sdk={sdk}
+        myNickname={nickname}
+        myPlayerId={sdk.sessionId}
+      />
+    );
+  }
+
 
   // ─── 3. REACTION RUSH GERİ SAYIM ───
   if (gameStatus === 'countdown') {
