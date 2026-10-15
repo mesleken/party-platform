@@ -17,6 +17,7 @@
     "@games/lost-and-found": "workspace:*",
     "@games/mini-football": "workspace:*",
     "@games/mini-tetris": "workspace:*",
+    "@games/rc-rush": "workspace:*",
     "@platform/sdk-core": "workspace:*",
     "cors": "^2.8.6",
     "express": "^5.2.1"

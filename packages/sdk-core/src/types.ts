@@ -38,3 +38,11 @@ export interface FootballInput {
   seq?: number;
 }
 
+export interface RcRushInput {
+  steer: number; // -1 to 1
+  throttle: number; // 0 to 1
+  brake: number; // 0 to 1
+  boost: boolean;
+  useItem: boolean;
+}
+

@@ -11,6 +11,7 @@ import { MiniFootballGame } from '@games/mini-football';
 import { BluffTriviaGame } from '@games/bluff-trivia';
 import { MiniTetrisGame, type TetrisInput, type TetrisMatchSnapshot } from '@games/mini-tetris';
 import { LostAndFoundGame, type PlayerInput as LostAndFoundInput, type LostAndFoundSnapshot } from '@games/lost-and-found';
+import { RcRushGame, type RcRushInput, type RcRushSnapshot } from '@games/rc-rush';
 
 export class LobbyRoom extends Room<{ state: SessionStateType }> {
   maxClients = 16; // 1 Ekran + 15 Telefon
@@ -25,6 +26,7 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
   private bluffTriviaGame?: BluffTriviaGame;
   private miniTetrisGame?: MiniTetrisGame;
   private lostAndFoundGame?: LostAndFoundGame;
+  private rcRushGame?: RcRushGame;
 
   onCreate(options: any) {
     this.setState(new SessionState());
@@ -81,7 +83,8 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
           message.gameId === 'mini-football' ||
           message.gameId === 'bluff-trivia' ||
           message.gameId === 'mini-tetris' ||
-          message.gameId === 'lost-and-found')
+          message.gameId === 'lost-and-found' ||
+          message.gameId === 'rc-rush')
       ) {
         this.state.selectedGameId = message.gameId;
         console.log(`[LobbyRoom] Seçili oyun güncellendi: ${this.state.selectedGameId}`);
@@ -106,6 +109,8 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
         this.startMiniTetrisGame();
       } else if (this.state.selectedGameId === 'lost-and-found') {
         this.startLostAndFoundGame();
+      } else if (this.state.selectedGameId === 'rc-rush') {
+        this.startRcRushGame();
       } else {
         this.startReactionRushGame();
       }
@@ -168,6 +173,12 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
     this.onMessage('LOST_AND_FOUND_INPUT', (client, message: LostAndFoundInput) => {
       if (this.state.activeGameId !== 'lost-and-found') return;
       this.lostAndFoundGame?.handleInput(client.sessionId, message);
+    });
+
+    // RC Rush Kontrolleri
+    this.onMessage('RC_RUSH_INPUT', (client, message: RcRushInput) => {
+      if (this.state.activeGameId !== 'rc-rush') return;
+      this.rcRushGame?.handleInput(client.sessionId, message);
     });
 
     // Lobiye geri dönme
@@ -545,6 +556,58 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
   }
 
   // ═══════════════════════════════════════════════════════════
+  // OYUN 7: RC RUSH (3D ARCADE TOY RACING)
+  // ═══════════════════════════════════════════════════════════
+
+  private startRcRushGame() {
+    console.log(`[LobbyRoom] RC Rush oyunu başlatılıyor!`);
+    this.clearTimers();
+    this.state.activeGameId = 'rc-rush';
+    this.state.status = 'rc_rush_playing';
+    this.state.winnerNickname = '';
+
+    this.rcRushGame = new RcRushGame({
+      broadcast: (type: string, payload: any) => {
+        this.broadcast(type, payload);
+
+        // Yarış tamamlandığında podyum için state senkronizasyonu
+        if (payload?.gameId === 'rc-rush' && payload?.state?.phase === 'completed') {
+          const snap: RcRushSnapshot = payload.state;
+          snap.cars.forEach((car) => {
+            const player = this.state.players.get(car.id);
+            if (player) {
+              // 1. = 1000, 2. = 750, 3. = 500, vb.
+              player.score = Math.max(100, 1000 - (car.position - 1) * 200);
+              player.rank = car.position;
+            }
+          });
+
+          this.state.winnerNickname = snap.winnerNickname || 'Lider';
+          setTimeout(() => {
+            if (this.state.activeGameId === 'rc-rush') {
+              this.endGame();
+            }
+          }, 5000);
+        }
+      },
+      sendToPlayer: (sessionId: string, type: string, payload: any) => {
+        const client = this.clients.find((candidate) => candidate.sessionId === sessionId);
+        client?.send(type, payload);
+      },
+    });
+
+    this.state.players.forEach((player: PlayerStateType) => {
+      if (player.isConnected) {
+        player.score = 0;
+        player.rank = 0;
+        this.rcRushGame?.addPlayer(player.id, player.nickname);
+      }
+    });
+
+    this.rcRushGame.start();
+  }
+
+  // ═══════════════════════════════════════════════════════════
   // ORTAK METOTLAR: OYUN SONU VE LOBİ
   // ═══════════════════════════════════════════════════════════
 
@@ -554,6 +617,7 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
     this.bluffTriviaGame?.stop();
     this.miniTetrisGame?.stop();
     this.lostAndFoundGame?.stop();
+    this.rcRushGame?.stop();
     this.state.status = 'game_over';
 
     let topScore = -1;
@@ -577,6 +641,8 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
     this.miniTetrisGame = undefined;
     this.lostAndFoundGame?.stop();
     this.lostAndFoundGame = undefined;
+    this.rcRushGame?.stop();
+    this.rcRushGame = undefined;
     this.state.status = 'lobby';
     this.state.activeGameId = '';
     this.state.currentRound = 0;

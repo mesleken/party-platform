@@ -27,6 +27,14 @@ export class ControllerSDK {
           this.onTetrisState(payload.state);
         } else if (payload?.gameId === 'lost-and-found') {
           this.onLostAndFoundState(payload.state);
+        } else if (payload?.gameId === 'rc-rush') {
+          this.onRcRushState(payload.state);
+        }
+      });
+
+      this.room.onMessage('EVENT', (payload: any) => {
+        if (payload?.gameId === 'rc-rush' && payload?.event) {
+          this.onRcRushEvent(payload.event);
         }
       });
 
@@ -98,6 +106,10 @@ export class ControllerSDK {
     this.room?.send('LOST_AND_FOUND_INPUT', input);
   }
 
+  public sendRcRushInput(input: any) {
+    this.room?.send('RC_RUSH_INPUT', input);
+  }
+
   public returnToLobby() {
     this.room?.send('RETURN_TO_LOBBY');
   }
@@ -110,6 +122,8 @@ export class ControllerSDK {
   public onStateChange: (state: SessionStateType) => void = () => {};
   public onTetrisState: (state: any) => void = () => {};
   public onLostAndFoundState: (state: any) => void = () => {};
+  public onRcRushState: (state: any) => void = () => {};
+  public onRcRushEvent: (event: any) => void = () => {};
   public onBluffError: (error: string) => void = () => {};
   public onBluffSuccess: (data: any) => void = () => {};
 }

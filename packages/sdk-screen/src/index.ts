@@ -23,6 +23,14 @@ export class ScreenSDK {
           this.onTetrisState(payload.state);
         } else if (payload?.gameId === 'lost-and-found') {
           this.onLostAndFoundState(payload.state);
+        } else if (payload?.gameId === 'rc-rush') {
+          this.onRcRushState(payload.state);
+        }
+      });
+
+      this.room.onMessage('EVENT', (payload: any) => {
+        if (payload?.gameId === 'rc-rush' && payload?.event) {
+          this.onRcRushEvent(payload.event);
         }
       });
 
@@ -37,6 +45,8 @@ export class ScreenSDK {
   public onStateChange: (state: SessionStateType) => void = () => {};
   public onTetrisState: (state: any) => void = () => {};
   public onLostAndFoundState: (state: any) => void = () => {};
+  public onRcRushState: (state: any) => void = () => {};
+  public onRcRushEvent: (event: any) => void = () => {};
 
   public selectGame(gameId: string) {
     this.room?.send('SELECT_GAME', { gameId });

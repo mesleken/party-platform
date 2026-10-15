@@ -11,6 +11,7 @@
   "dependencies": {
     "@games/lost-and-found": "workspace:*",
     "@games/mini-tetris": "workspace:*",
+    "@games/rc-rush": "workspace:*",
     "@platform/sdk-controller": "workspace:*",
     "@platform/sdk-core": "workspace:*",
     "preact": "^10.29.8"

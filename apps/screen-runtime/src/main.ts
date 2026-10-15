@@ -3,6 +3,8 @@ import QRCode from 'qrcode';
 import { FootballRenderer3D } from './FootballRenderer3D';
 import { TetrisRenderer } from './TetrisRenderer';
 import { LostAndFoundRenderer3D } from './LostAndFoundRenderer3D';
+import { RcRushRenderer3D } from './RcRushRenderer3D';
+import { TRACK_WAYPOINTS, getNormalizedMiniMapCoords } from '@games/rc-rush';
 
 async function bootstrap() {
   const statusView = document.getElementById('status-view')!;
@@ -11,6 +13,7 @@ async function bootstrap() {
   const quizView = document.getElementById('quiz-view')!;
   const footballView = document.getElementById('football-view')!;
   const lostAndFoundView = document.getElementById('lost-and-found-view')!;
+  const rcRushView = document.getElementById('rc-rush-view')!;
   const resultView = document.getElementById('result-view')!;
   const gameoverView = document.getElementById('gameover-view')!;
 
@@ -29,6 +32,70 @@ async function bootstrap() {
   const cardBluffTrivia = document.getElementById('card-bluff-trivia')!;
   const cardMiniTetris = document.getElementById('card-mini-tetris')!;
   const cardLostAndFound = document.getElementById('card-lost-and-found')!;
+  const cardRcRush = document.getElementById('card-rc-rush')!;
+
+  // RC Rush Elements
+  const rcRushCanvasContainer = document.getElementById('rc-rush-canvas-container')!;
+  const rcRushLapBadge = document.getElementById('rc-rush-lap-badge')!;
+  const rcRushTimer = document.getElementById('rc-rush-timer')!;
+  const rcRushBestLap = document.getElementById('rc-rush-best-lap')!;
+  const rcRushEventBanner = document.getElementById('rc-rush-event-banner')!;
+  const rcRushEventText = document.getElementById('rc-rush-event-text')!;
+  const rcRushPosition = document.getElementById('rc-rush-position')!;
+  const rcRushTotalRacers = document.getElementById('rc-rush-total-racers')!;
+  const rcRushLeaderboardList = document.getElementById('rc-rush-leaderboard-list')!;
+  const rcRushMinimap = document.getElementById('rc-rush-minimap') as HTMLCanvasElement;
+  const rcRushSpeed = document.getElementById('rc-rush-speed')!;
+  const rcRushBoostNum = document.getElementById('rc-rush-boost-num')!;
+  const rcRushBoostBar = document.getElementById('rc-rush-boost-bar')!;
+  const rcRushItemIcon = document.getElementById('rc-rush-item-icon')!;
+  const rcRushWeaponSlot = document.getElementById('rc-rush-weapon-slot');
+  const rcRushRpmDots = document.querySelectorAll<HTMLElement>('.rc-rpm-dot');
+  const rcRushCountdownBanner = document.getElementById('rc-rush-countdown-banner')!;
+  const rcRushCountdownNum = document.getElementById('rc-rush-countdown-num')!;
+  const rcRushWrongwayBanner = document.getElementById('rc-rush-wrongway-banner')!;
+  let rcRushRenderer: RcRushRenderer3D | null = null;
+  let rcRushBannerTimeout: any = null;
+  let rcRushRouletteInterval: any = null;
+  let rcRushIsRouletteActive = false;
+
+  function triggerRcWeaponRoulette(awardedItem: string) {
+    if (rcRushRouletteInterval) clearInterval(rcRushRouletteInterval);
+    rcRushIsRouletteActive = true;
+    const items = ['🚀', '⚡', '🛢️', '🛡️'];
+    const itemIcons: Record<string, string> = {
+      rocket: '🚀',
+      turbo: '⚡',
+      oil: '🛢️',
+      shield: '🛡️',
+    };
+    let spins = 0;
+    const maxSpins = 14;
+    if (rcRushWeaponSlot) {
+      rcRushWeaponSlot.style.borderColor = '#38bdf8';
+      rcRushWeaponSlot.style.boxShadow = '0 0 30px #38bdf8';
+      rcRushWeaponSlot.style.transform = 'scale(1.1)';
+    }
+
+    rcRushRouletteInterval = setInterval(() => {
+      spins++;
+      const randIcon = items[spins % items.length];
+      if (rcRushItemIcon) rcRushItemIcon.innerText = randIcon;
+
+      if (spins >= maxSpins) {
+        clearInterval(rcRushRouletteInterval);
+        rcRushRouletteInterval = null;
+        rcRushIsRouletteActive = false;
+        const finalIcon = itemIcons[awardedItem] || '📦';
+        if (rcRushItemIcon) rcRushItemIcon.innerText = finalIcon;
+        if (rcRushWeaponSlot) {
+          rcRushWeaponSlot.style.borderColor = '#facc15';
+          rcRushWeaponSlot.style.boxShadow = '0 0 25px rgba(250,204,21,0.5)';
+          rcRushWeaponSlot.style.transform = 'scale(1.0)';
+        }
+      }
+    }, 70);
+  }
 
   // Lost & Found Elements
   const lostAndFoundCanvasContainer = document.getElementById('lost-and-found-canvas-container')!;
@@ -170,6 +237,10 @@ async function bootstrap() {
       sdk.selectGame('lost-and-found');
     };
 
+    cardRcRush.onclick = () => {
+      sdk.selectGame('rc-rush');
+    };
+
     // Buton Eylemleri
     startGameBtn.onclick = () => {
       sdk.startGame();
@@ -199,6 +270,10 @@ async function bootstrap() {
           lostAndFoundRenderer.destroy();
           lostAndFoundRenderer = null;
         }
+        if (rcRushRenderer) {
+          rcRushRenderer.dispose();
+          rcRushRenderer = null;
+        }
 
         lobbyView.style.display = 'flex';
         gameView.style.display = 'none';
@@ -207,6 +282,7 @@ async function bootstrap() {
         bluffView.style.display = 'none';
         tetrisView.style.display = 'none';
         lostAndFoundView.style.display = 'none';
+        rcRushView.style.display = 'none';
         resultView.style.display = 'none';
         gameoverView.style.display = 'none';
 
@@ -218,6 +294,7 @@ async function bootstrap() {
         cardBluffTrivia.classList.toggle('selected', selected === 'bluff-trivia');
         cardMiniTetris.classList.toggle('selected', selected === 'mini-tetris');
         cardLostAndFound.classList.toggle('selected', selected === 'lost-and-found');
+        cardRcRush.classList.toggle('selected', selected === 'rc-rush');
 
         playersList.innerHTML = '';
         playersArray.forEach((p) => {
@@ -667,6 +744,42 @@ async function bootstrap() {
         return;
       }
 
+      // ─── 8. RC RUSH (3D TOY ARCADE RACING) ───
+      if (
+        status === 'rc_rush_playing' ||
+        (state.activeGameId === 'rc-rush' && status !== 'game_over' && status !== 'lobby')
+      ) {
+        if (footballRenderer) {
+          footballRenderer.dispose();
+          footballRenderer = null;
+        }
+        if (tetrisRenderer) {
+          tetrisRenderer.dispose();
+          tetrisRenderer = null;
+        }
+        if (lostAndFoundRenderer) {
+          lostAndFoundRenderer.destroy();
+          lostAndFoundRenderer = null;
+        }
+
+        lobbyView.style.display = 'none';
+        gameView.style.display = 'none';
+        quizView.style.display = 'none';
+        footballView.style.display = 'none';
+        bluffView.style.display = 'none';
+        tetrisView.style.display = 'none';
+        lostAndFoundView.style.display = 'none';
+        resultView.style.display = 'none';
+        gameoverView.style.display = 'none';
+        rcRushView.style.display = 'flex';
+
+        if (!rcRushRenderer) {
+          rcRushRenderer = new RcRushRenderer3D(rcRushCanvasContainer);
+        }
+
+        return;
+      }
+
       // ─── 8. REACTION RUSH ROUND SONUCU ───
       if (status === 'round_result') {
         if (footballRenderer) {
@@ -884,6 +997,275 @@ async function bootstrap() {
           } else {
             lafMinigameOverlay.style.display = 'none';
           }
+        }
+      }
+    };
+
+    // RC Rush Canlı Snapshot Dinleyicisi
+    sdk.onRcRushState = (rcState: any) => {
+      if (rcRushView.style.display === 'flex' || rcRushRenderer) {
+        if (!rcRushRenderer) {
+          rcRushRenderer = new RcRushRenderer3D(rcRushCanvasContainer);
+        }
+        rcRushRenderer.updateSnapshot(rcState);
+
+        // 1. Lider veya ilk arabayı bul
+        const cars: any[] = rcState.cars || [];
+        const leader = cars.find((c) => c.position === 1) || cars[0];
+
+        // 2. Tur ve Süre (Sol Üst)
+        if (rcRushLapBadge && leader) {
+          rcRushLapBadge.innerText = `LAP ${leader.lap} / ${rcState.totalLaps || 3}`;
+        }
+        if (rcRushTimer && rcState.elapsedMs !== undefined) {
+          const totalMs = rcState.elapsedMs;
+          const mins = Math.floor(totalMs / 60000).toString().padStart(2, '0');
+          const secs = Math.floor((totalMs % 60000) / 1000).toString().padStart(2, '0');
+          const millis = (totalMs % 1000).toString().padStart(3, '0');
+          rcRushTimer.innerText = `${mins}:${secs}.${millis}`;
+        }
+        if (rcRushBestLap && leader) {
+          if (leader.bestLapMs > 0) {
+            const bMs = leader.bestLapMs;
+            const bM = Math.floor(bMs / 60000).toString().padStart(2, '0');
+            const bS = Math.floor((bMs % 60000) / 1000).toString().padStart(2, '0');
+            const bMil = (bMs % 1000).toString().padStart(3, '0');
+            rcRushBestLap.innerText = `EN İYİ: ${bM}:${bS}.${bMil}`;
+          } else {
+            rcRushBestLap.innerText = 'EN İYİ: --:--.---';
+          }
+        }
+
+        // 3. Sıralama Stack (Sağ Üst)
+        if (rcRushPosition && leader) {
+          rcRushPosition.innerText = leader.position.toString();
+        }
+        if (rcRushTotalRacers) {
+          rcRushTotalRacers.innerText = `/ ${cars.length}`;
+        }
+        if (rcRushLeaderboardList) {
+          const sorted = [...cars].sort((a, b) => a.position - b.position);
+          rcRushLeaderboardList.innerHTML = sorted.map((c) => {
+            const isFirst = c.position === 1;
+            let gapText = 'LİDER';
+            if (!isFirst) {
+              if (c.distanceToAheadM !== undefined && c.distanceToAheadM > 0) {
+                gapText = `-${Math.round(c.distanceToAheadM)}m`;
+              } else if (c.gapToLeaderSec !== undefined && c.gapToLeaderSec > 0) {
+                gapText = `+${c.gapToLeaderSec.toFixed(1)}s`;
+              } else {
+                gapText = '+0.0s';
+              }
+            }
+            return `
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+                <div style="display:flex; align-items:center; gap:0.4rem;">
+                  <span style="width:8px; height:8px; border-radius:50%; background:${c.color}; display:inline-block; box-shadow:0 0 6px ${c.color};"></span>
+                  <span style="color:#f8fafc; font-size:0.85rem;">${c.position}. ${c.nickname}</span>
+                </div>
+                <span style="color:${isFirst ? '#facc15' : '#94a3b8'}; font-family:monospace; font-size:0.75rem; font-weight:800;">${gapText}</span>
+              </div>
+            `;
+          }).join('');
+        }
+
+        // 4. Re-Volt LED RPM Bar & Telemetri (Sağ Alt)
+        if (leader) {
+          if (rcRushSpeed) {
+            rcRushSpeed.innerText = Math.round(leader.speed).toString().padStart(3, '0');
+          }
+          if (rcRushBoostNum) {
+            rcRushBoostNum.innerText = `${Math.round(leader.boostMeter)}%`;
+          }
+          if (rcRushBoostBar) {
+            // GPU-accelerated transform: scaleX
+            const boostRatio = Math.max(0, Math.min(100, leader.boostMeter)) / 100;
+            rcRushBoostBar.style.transform = `scaleX(${boostRatio})`;
+            rcRushBoostBar.style.filter = leader.isBoosting
+              ? 'drop-shadow(0 0 10px #f97316)'
+              : 'none';
+          }
+
+          // Re-Volt 10 LED RPM Noktası (Yeşil -> Sarı -> Kırmızı)
+          if (rcRushRpmDots && rcRushRpmDots.length > 0) {
+            const rpmNorm = Math.max(0, Math.min(1, leader.rpmNormalized ?? (leader.speed / 160)));
+            const activeCount = Math.round(rpmNorm * rcRushRpmDots.length);
+            rcRushRpmDots.forEach((dot, idx) => {
+              if (idx < activeCount) {
+                if (idx < 5) {
+                  dot.style.background = '#22c55e';
+                  dot.style.boxShadow = '0 0 8px #22c55e';
+                } else if (idx < 8) {
+                  dot.style.background = '#facc15';
+                  dot.style.boxShadow = '0 0 8px #facc15';
+                } else {
+                  dot.style.background = '#ef4444';
+                  dot.style.boxShadow = '0 0 10px #ef4444';
+                }
+              } else {
+                dot.style.background = '#1e293b';
+                dot.style.boxShadow = 'none';
+              }
+            });
+          }
+
+          if (!rcRushIsRouletteActive && rcRushItemIcon) {
+            const itemIcons: Record<string, string> = {
+              rocket: '🚀',
+              turbo: '⚡',
+              oil: '🛢️',
+              shield: '🛡️',
+            };
+            rcRushItemIcon.innerText = leader.item ? (itemIcons[leader.item] || '📦') : '📦';
+          }
+        }
+
+        // 5. Geri Sayım Overlay (Orta)
+        if (rcRushCountdownBanner) {
+          if (rcState.phase === 'countdown') {
+            rcRushCountdownBanner.style.display = 'block';
+            if (rcRushCountdownNum) {
+              rcRushCountdownNum.innerText = rcState.countdown > 0 ? rcState.countdown.toString() : 'GO!';
+            }
+          } else {
+            rcRushCountdownBanner.style.display = 'none';
+          }
+        }
+
+        // 6. Ters Yön Uyarısı
+        if (rcRushWrongwayBanner && leader) {
+          rcRushWrongwayBanner.style.display = leader.isWrongWay ? 'block' : 'none';
+        }
+
+        // 7. Live Mini-Map Çizimi (Sol Alt Canvas - Yön Gösteren Oklar)
+        if (rcRushMinimap) {
+          const ctx = rcRushMinimap.getContext('2d');
+          if (ctx) {
+            const w = rcRushMinimap.width;
+            const h = rcRushMinimap.height;
+            ctx.clearRect(0, 0, w, h);
+
+            // Pist Yolu (Dış Hat)
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 7;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            TRACK_WAYPOINTS.forEach((wp, i) => {
+              const norm = getNormalizedMiniMapCoords(wp.x, wp.z);
+              const mx = norm.x * (w - 24) + 12;
+              const my = norm.y * (h - 24) + 12;
+              if (i === 0) ctx.moveTo(mx, my);
+              else ctx.lineTo(mx, my);
+            });
+            ctx.closePath();
+            ctx.stroke();
+
+            // Pist Çizgisi (İç Çizgi - Neon Cyan)
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            // Finish Çizgisi İşareti
+            const finishNorm = getNormalizedMiniMapCoords(TRACK_WAYPOINTS[0].x, TRACK_WAYPOINTS[0].z);
+            const fx = finishNorm.x * (w - 24) + 12;
+            const fy = finishNorm.y * (h - 24) + 12;
+            ctx.fillStyle = '#facc15';
+            ctx.fillRect(fx - 2, fy - 5, 4, 10);
+
+            // Araçlar: Yön Gösteren Üçgen Pointers
+            cars.forEach((car) => {
+              const carNorm = getNormalizedMiniMapCoords(car.x, car.z);
+              const cx = carNorm.x * (w - 24) + 12;
+              const cy = carNorm.y * (h - 24) + 12;
+
+              ctx.save();
+              ctx.translate(cx, cy);
+              ctx.rotate(car.rotation);
+
+              const isLeader = car.position === 1;
+              const size = isLeader ? 7 : 5;
+
+              ctx.fillStyle = car.color || '#38bdf8';
+              ctx.beginPath();
+              ctx.moveTo(size + 2, 0); // Burun
+              ctx.lineTo(-size, -size * 0.8);
+              ctx.lineTo(-size, size * 0.8);
+              ctx.closePath();
+              ctx.fill();
+
+              if (isLeader) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+              }
+              ctx.restore();
+            });
+          }
+        }
+      }
+    };
+
+    // RC Rush Olay (Event) Dinleyicisi
+    sdk.onRcRushEvent = (raceEvent: any) => {
+      if (rcRushRenderer) {
+        rcRushRenderer.handleRaceEvent(raceEvent);
+      }
+
+      // Dinamik Üst Banner ve Roulette Tetikleme
+      if (rcRushEventBanner && rcRushEventText) {
+        let msg = '';
+        let color = '#38bdf8';
+
+        switch (raceEvent.type) {
+          case 'ITEM_PICKED':
+            msg = `🎁 ${raceEvent.playerName || ''} GÜÇ KUTUSU ALDI!`;
+            color = '#facc15';
+            triggerRcWeaponRoulette(raceEvent.item);
+            break;
+          case 'CRASH':
+            msg = `💥 ${raceEvent.playerName || ''} KAZA YAPTI!`;
+            color = '#ef4444';
+            break;
+          case 'OVERTAKE':
+            msg = `⚡ ${raceEvent.playerName || 'Biri'} Öne Geçti! (#${raceEvent.newPosition})`;
+            color = '#38bdf8';
+            break;
+          case 'FINAL_LAP':
+            msg = `🔥 SON TUR! (FINAL LAP)`;
+            color = '#f97316';
+            break;
+          case 'ROCKET_HIT':
+            msg = `💥 ROKET İSABETİ: ${raceEvent.targetName || ''}!`;
+            color = '#ef4444';
+            break;
+          case 'OIL_SLIP':
+            msg = `🛢️ ${raceEvent.playerName || ''} YAĞA BASTI!`;
+            color = '#eab308';
+            break;
+          case 'BOOST':
+            msg = `🚀 ${raceEvent.playerName || ''} NİTRO AÇTI!`;
+            color = '#22c55e';
+            break;
+          case 'FINISH':
+            msg = `🏁 YARIŞ BİTTİ! KAZANAN: ${raceEvent.playerName || ''}`;
+            color = '#facc15';
+            break;
+          default:
+            break;
+        }
+
+        if (msg) {
+          rcRushEventText.innerText = msg;
+          rcRushEventText.style.color = color;
+          rcRushEventBanner.style.borderColor = color;
+          rcRushEventBanner.style.boxShadow = `0 0 35px ${color}80`;
+          rcRushEventBanner.style.display = 'block';
+
+          if (rcRushBannerTimeout) clearTimeout(rcRushBannerTimeout);
+          rcRushBannerTimeout = setTimeout(() => {
+            if (rcRushEventBanner) rcRushEventBanner.style.display = 'none';
+          }, 2400);
         }
       }
     };

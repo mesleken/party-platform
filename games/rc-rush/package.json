@@ -1,0 +1,18 @@
+{
+  "name": "@games/rc-rush",
+  "version": "1.0.0",
+  "description": "Re-Volt inspired 3D Toy-Scale RC Racing game for Party Platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@colyseus/core": "^0.18.17",
+    "@platform/sdk-core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

@@ -5,6 +5,7 @@ import { FootballGamepad } from './FootballGamepad';
 import { BluffTriviaController } from './BluffTriviaController';
 import { MiniTetrisGamepad } from './MiniTetrisGamepad';
 import { LostAndFoundGamepad } from './LostAndFoundGamepad';
+import { RcRushGamepad } from './RcRushGamepad';
 
 const sdk = new ControllerSDK(`http://${window.location.hostname}:2567`);
 
@@ -268,6 +269,12 @@ export function App() {
             >
               🧸 Lost & Found
             </button>
+            <button
+              class={`lobby-tab-btn ${selectedGameId === 'rc-rush' ? 'active' : ''}`}
+              onClick={() => handleSelectGame('rc-rush')}
+            >
+              🏎️ RC Rush
+            </button>
           </div>
         )}
 
@@ -284,6 +291,8 @@ export function App() {
               ? '🧱 Mini Tetris'
               : selectedGameId === 'lost-and-found'
               ? '🧸 Lost & Found'
+              : selectedGameId === 'rc-rush'
+              ? '🏎️ RC Rush'
               : '⚡ Reaction Rush'}
           </div>
         )}
@@ -584,6 +593,20 @@ export function App() {
   ) {
     return (
       <LostAndFoundGamepad
+        sdk={sdk}
+        myNickname={nickname}
+        myPlayerId={sdk.sessionId}
+      />
+    );
+  }
+
+  // ─── RC RUSH GAMEPAD EKRANI ───
+  if (
+    gameStatus === 'rc_rush_playing' ||
+    (activeGameId === 'rc-rush' && gameStatus !== 'game_over' && gameStatus !== 'lobby')
+  ) {
+    return (
+      <RcRushGamepad
         sdk={sdk}
         myNickname={nickname}
         myPlayerId={sdk.sessionId}

@@ -510,6 +510,13 @@
               <div class="game-card-title">Lost & Found</div>
               <div class="game-card-desc">It Takes Two tarzı 2 kişilik ortak macera! Mıknatıs, kanca ve bulmaca!</div>
             </div>
+
+            <!-- Oyun 7: RC Rush -->
+            <div class="game-card-select" id="card-rc-rush">
+              <div class="game-card-icon">🏎️</div>
+              <div class="game-card-title">RC Rush</div>
+              <div class="game-card-desc">Re-Volt esintili 3D RC araba yarışı! Nitro, roket ve devasa oyuncak odası!</div>
+            </div>
           </div>
 
           <button class="start-btn" id="start-game-btn">OYUNU BAŞLAT 🎮</button>
@@ -844,6 +851,134 @@
 
       <!-- 3D Canvas Mount Point -->
       <div id="lost-and-found-canvas-container" style="flex:1; width:100%; height:100%;"></div>
+    </div>
+
+    <!-- 7. RC RUSH VIEW (3D TOY ARCADE RACING) -->
+    <div id="rc-rush-view" style="display:none; flex:1; flex-direction:column; position:relative; overflow:hidden; background:#0b0f19;">
+
+      <!-- ═══ 1. SOL ÜST: RACE INFO & WEAPON ROULETTE SLOT ═══ -->
+      <div style="position:absolute; top:1.2rem; left:1.5rem; z-index:20; pointer-events:none; display:flex; gap:0.8rem; align-items:flex-start;">
+        <!-- Süre & Tur Kutusu -->
+        <div style="background:rgba(15,23,42,0.8); backdrop-filter:blur(14px); border:1.5px solid rgba(56,189,248,0.3); border-radius:1rem; padding:0.8rem 1.4rem; color:white; box-shadow:0 10px 25px rgba(0,0,0,0.6);">
+          <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+            <span style="font-size:0.9rem;">🏁</span>
+            <span id="rc-rush-lap-badge" style="font-size:1.15rem; font-weight:900; color:#facc15; letter-spacing:0.05em;">LAP 1 / 3</span>
+          </div>
+          <div id="rc-rush-timer" style="font-size:1.8rem; font-weight:900; font-family:monospace; font-variant-numeric:tabular-nums; color:#f8fafc; line-height:1; letter-spacing:0.05em;">
+            00:00.000
+          </div>
+          <div id="rc-rush-best-lap" style="margin-top:0.35rem; font-size:0.75rem; font-weight:700; color:#94a3b8; font-family:monospace;">
+            EN İYİ: --:--.---
+          </div>
+        </div>
+
+        <!-- Re-Volt Tarzı Silah / Güçlendirme Slotu (Slot Machine Roulette) -->
+        <div id="rc-rush-weapon-slot" style="background:rgba(15,23,42,0.85); backdrop-filter:blur(14px); border:2px solid #facc15; border-radius:1rem; width:74px; height:74px; display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:0 0 25px rgba(250,204,21,0.3); transition:all 0.2s ease;">
+          <div style="font-size:0.55rem; font-weight:800; color:#facc15; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.15rem;">GÜÇ</div>
+          <div id="rc-rush-item-icon" style="font-size:2rem; line-height:1; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">📦</div>
+        </div>
+      </div>
+
+      <!-- ═══ 2. ÜST ORTA: DYNAMIC RACE BANNER ═══ -->
+      <div id="rc-rush-event-banner" style="display:none; position:absolute; top:1.5rem; left:50%; transform:translateX(-50%); z-index:30; pointer-events:none; transition:all 0.3s ease;">
+        <div style="background:rgba(0,0,0,0.85); backdrop-filter:blur(16px); border:2px solid #38bdf8; border-radius:1.5rem; padding:0.6rem 2rem; color:white; text-align:center; box-shadow:0 0 30px rgba(56,189,248,0.5);">
+          <div id="rc-rush-event-text" style="font-size:1.5rem; font-weight:900; letter-spacing:0.1em; color:#38bdf8; text-transform:uppercase;">
+            OVERTAKE!
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ 3. SAĞ ÜST: POSITION STACK & RELATIVE DISTANCES (-12m / +5m) ═══ -->
+      <div style="position:absolute; top:1.2rem; right:1.5rem; z-index:20; pointer-events:none; min-width:230px;">
+        <div style="background:rgba(15,23,42,0.8); backdrop-filter:blur(14px); border:1.5px solid rgba(56,189,248,0.3); border-radius:1rem; padding:0.8rem 1.2rem; color:white; box-shadow:0 10px 25px rgba(0,0,0,0.6);">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.6rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.4rem;">
+            <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.15em; color:#94a3b8;">SIRALAMA</div>
+            <div style="display:flex; align-items:baseline; gap:0.2rem;">
+              <span id="rc-rush-position" style="font-size:2.2rem; font-weight:900; color:#38bdf8; line-height:1;">1</span>
+              <span id="rc-rush-total-racers" style="font-size:1.1rem; font-weight:700; color:#94a3b8;">/ 4</span>
+            </div>
+          </div>
+          <!-- Canlı Sıralama Listesi (Göreceli mesafe farklarıyla) -->
+          <div id="rc-rush-leaderboard-list" style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; font-weight:700;">
+            <!-- JS tarafından doldurulur -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ 4. SOL ALT: LIVE MINI-MAP ═══ -->
+      <div style="position:absolute; bottom:1.5rem; left:1.5rem; z-index:20; pointer-events:none;">
+        <div style="background:rgba(15,23,42,0.8); backdrop-filter:blur(14px); border:1.5px solid rgba(56,189,248,0.3); border-radius:1.2rem; padding:0.8rem; color:white; box-shadow:0 10px 25px rgba(0,0,0,0.6);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; padding:0 0.2rem;">
+            <span style="font-size:0.65rem; font-weight:800; text-transform:uppercase; letter-spacing:0.15em; color:#94a3b8;">RADAR / MINI-MAP</span>
+            <span style="width:6px; height:6px; border-radius:50%; background:#22c55e; display:inline-block; box-shadow:0 0 8px #22c55e;"></span>
+          </div>
+          <canvas id="rc-rush-minimap" width="190" height="140" style="display:block; border-radius:0.6rem; background:rgba(0,0,0,0.4);"></canvas>
+        </div>
+      </div>
+
+      <!-- ═══ 5. SAĞ ALT: RE-VOLT LED TAKOMETRE, HIZ VE NİTRO ═══ -->
+      <div style="position:absolute; bottom:1.5rem; right:1.5rem; z-index:20; pointer-events:none; min-width:250px;">
+        <div style="background:rgba(15,23,42,0.8); backdrop-filter:blur(14px); border:1.5px solid rgba(56,189,248,0.3); border-radius:1.2rem; padding:1rem 1.4rem; color:white; box-shadow:0 10px 25px rgba(0,0,0,0.6); text-align:right;">
+          
+          <!-- Re-Volt LED RPM Barı (Yeşil -> Sarı -> Kırmızı LED Noktaları) -->
+          <div style="display:flex; justify-content:flex-end; gap:5px; margin-bottom:0.5rem;" id="rc-rush-rpm-bar">
+            <span class="rc-rpm-dot" style="width:9px; height:14px; border-radius:2px; background:#1e293b; transition:all 0.05s ease;"></span>
+            <span class="rc-rpm-dot" style="width:9px; height:14px; border-radius:2px; background:#1e293b; transition:all 0.05s ease;"></span>
+            <span class="rc-rpm-dot" style="width:9px; height:14px; border-radius:2px; background:#1e293b; transition:all 0.05s ease;"></span>
+            <span class="rc-rpm-dot" style="width:9px; height:14px; border-radius:2px; background:#1e293b; transition:all 0.05s ease;"></span>
+            <span class="rc-rpm-dot" style="width:9px; height:14px; border-radius:2px; background:#1e293b; transition:all 0.05s ease;"></span>
+            <span class="rc-rpm-dot" style="width:9px; height:14px; border-radius:2px; background:#1e293b; transition:all 0.05s ease;"></span>
+            <span class="rc-rpm-dot" style="width:9px; height:14px; border-radius:2px; background:#1e293b; transition:all 0.05s ease;"></span>
+            <span class="rc-rpm-dot" style="width:9px; height:14px; border-radius:2px; background:#1e293b; transition:all 0.05s ease;"></span>
+            <span class="rc-rpm-dot" style="width:9px; height:14px; border-radius:2px; background:#1e293b; transition:all 0.05s ease;"></span>
+            <span class="rc-rpm-dot" style="width:9px; height:14px; border-radius:2px; background:#1e293b; transition:all 0.05s ease;"></span>
+          </div>
+
+          <!-- Dijital Hız Göstergesi -->
+          <div style="display:flex; justify-content:flex-end; align-items:baseline; gap:0.4rem;">
+            <span id="rc-rush-speed" style="font-size:3.6rem; font-weight:900; font-family:monospace; line-height:1; color:#f8fafc; text-shadow:0 0 15px rgba(255,255,255,0.4);">000</span>
+            <span style="font-size:0.85rem; font-weight:800; color:#94a3b8; text-transform:uppercase;">KM/H</span>
+          </div>
+
+          <!-- Alevli Nitro Barı (GPU Hızlandırmalı scaleX) -->
+          <div style="margin-top:0.7rem;">
+            <div style="display:flex; justify-content:space-between; font-size:0.65rem; font-weight:800; text-transform:uppercase; letter-spacing:0.1em; color:#94a3b8; margin-bottom:0.25rem;">
+              <span>🔥 NİTRO TURBO</span>
+              <span id="rc-rush-boost-num" style="color:#f97316;">100%</span>
+            </div>
+            <div style="height:9px; background:rgba(255,255,255,0.08); border-radius:5px; overflow:hidden; border:1px solid rgba(255,255,255,0.18);">
+              <div id="rc-rush-boost-bar" style="width:100%; height:100%; transform-origin:left; transform:scaleX(1); background:linear-gradient(90deg, #38bdf8, #f59e0b, #ef4444); border-radius:5px; transition:transform 0.08s linear;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ 6. ORTA ALAN: GERİ SAYIM (COUNTDOWN) ═══ -->
+      <div id="rc-rush-countdown-banner" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:40; pointer-events:none; display:none; text-align:center;">
+        <div id="rc-rush-countdown-num" style="font-size:9rem; font-weight:900; color:#facc15; text-shadow:0 0 50px rgba(250,204,21,0.8); line-height:1;">
+          3
+        </div>
+        <div style="font-size:1.5rem; font-weight:800; letter-spacing:0.2em; color:white; text-transform:uppercase; margin-top:0.5rem;">
+          HAZIR OLUN!
+        </div>
+      </div>
+
+      <!-- ═══ 7. ORTA ALAN: TERS YÖN UYARISI (WRONG WAY) ═══ -->
+      <div id="rc-rush-wrongway-banner" style="display:none; position:absolute; top:42%; left:50%; transform:translate(-50%,-50%); z-index:35; pointer-events:none;">
+        <div style="background:rgba(220,38,38,0.9); border:3px solid #fef08a; border-radius:1.5rem; padding:0.8rem 2.5rem; text-align:center; box-shadow:0 0 40px rgba(220,38,38,0.8); animation:pulse 0.6s infinite alternate;">
+          <div style="font-size:2.5rem; line-height:1;">⚠️</div>
+          <div style="font-size:1.8rem; font-weight:900; color:white; letter-spacing:0.1em; text-transform:uppercase;">
+            TERS YÖN!
+          </div>
+          <div style="font-size:0.9rem; font-weight:700; color:#fef08a;">GERİ DÖNÜN</div>
+        </div>
+      </div>
+
+      <!-- ═══ RETRO ARCADE SCANLINE & VIGNETTE OVERLAY (POINTER-EVENTS: NONE) ═══ -->
+      <div style="position:absolute; inset:0; z-index:15; pointer-events:none; background:radial-gradient(circle at center, transparent 65%, rgba(0,0,0,0.45) 100%), repeating-linear-gradient(0deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 1px, transparent 1px, transparent 3px);"></div>
+
+      <!-- 3D Canvas Mount Point -->
+      <div id="rc-rush-canvas-container" style="flex:1; width:100%; height:100%;"></div>
     </div>
 
     <!-- 8. ROUND RESULT VIEW -->
