@@ -1,11 +1,111 @@
 import { useState, useEffect } from 'preact/hooks';
 import { ControllerSDK } from '@platform/sdk-controller';
-import type { SessionStateType } from '@platform/sdk-core';
+import { QUIZ_CATEGORIES, type SessionStateType } from '@platform/sdk-core';
 import { FootballGamepad } from './FootballGamepad';
 import { BluffTriviaController } from './BluffTriviaController';
 import { MiniTetrisGamepad } from './MiniTetrisGamepad';
 import { LostAndFoundGamepad } from './LostAndFoundGamepad';
 import { RcRushGamepad } from './RcRushGamepad';
+import { TransferShowdownController } from './TransferShowdownController';
+
+const COLOR_PALETTE = [
+  '#ef4444',
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#8b5cf6',
+  '#ec4899',
+  '#06b6d4',
+  '#84cc16'
+];
+
+const COSTUME_ITEMS = [
+  { id: 'standard', name: 'Standart', icon: '🏎️' },
+  { id: 'retro_racer', name: 'Retro 90s', icon: '🕹️' },
+  { id: 'cyber_neon', name: 'Cyber Neon', icon: '⚡' },
+  { id: 'stealth_shadow', name: 'Gizli Gölge', icon: '🥷' },
+  { id: 'golden_legend', name: 'Altın Efsane', icon: '🏆' },
+  { id: 'toxic_surge', name: 'Zehirli Fırtına', icon: '☣️' }
+];
+
+const GAME_METAS: Record<string, {
+  icon: string;
+  title: string;
+  tutorials: { title: string; desc: string }[];
+}> = {
+  'reaction-rush': {
+    icon: '⚡',
+    title: 'Reaction Rush',
+    tutorials: [
+      { title: 'Kırmızı Işıkta Dur', desc: 'Ekran kırmızı olduğunda kesinlikle basma, faul yaparsın (-40 puan)!' },
+      { title: 'Yeşil Işıkta Bas', desc: 'Yeşil yandığı anda telefonundaki butona en hızlı sen bas!' },
+      { title: '3 Round Yarış', desc: 'En yüksek skoru toplayan refleks şampiyonu olur.' }
+    ]
+  },
+  'quiz-arena': {
+    icon: '🧠',
+    title: 'Quiz Arena',
+    tutorials: [
+      { title: 'Soruyu Ekranda Oku', desc: 'Dev ekranda soru belirir, 15 saniye içinde cevabı düşün.' },
+      { title: 'Telefonda Şıkkını Seç', desc: 'Telefonundaki 4 seçenekten doğru olana tıkla.' },
+      { title: 'Streak Kombo Bonusu', desc: 'Arka arkaya doğru cevaplar puanını katlar!' }
+    ]
+  },
+  'mini-football': {
+    icon: '⚽',
+    title: 'Mini Football',
+    tutorials: [
+      { title: 'Sol Başparmak: Joystick', desc: 'Sanal joystick ile oyuncunu yönlendir ve sahada pozisyon al.' },
+      { title: 'Pas, Şut ve Kayma', desc: 'Top sendeyken PAS ve ŞUT butonları, rakipten alırken KAYARAK MÜDAHALE yap.' },
+      { title: 'Hızlı Oyuncu Değişimi', desc: 'DEĞİŞTİR butonu ile topa en yakın serbest oyuncuya anında geç!' }
+    ]
+  },
+  'bluff-trivia': {
+    icon: '🎭',
+    title: 'Bluff Trivia',
+    tutorials: [
+      { title: 'İnandırıcı Bir Yalan Yaz', desc: 'Herkesi kandıracak zekice bir sahte cevap uydur.' },
+      { title: 'Gerçek Cevabı Bul', desc: 'Cevaplar arasından doğru olanı bulup oyla.' },
+      { title: 'Rakipleri Kandır', desc: 'Senin yalanına inanan her oyuncudan puan topla!' }
+    ]
+  },
+  'mini-tetris': {
+    icon: '🧱',
+    title: 'Mini Tetris',
+    tutorials: [
+      { title: 'D-Pad ile Blokları Yönet', desc: 'Sol/Sağ ile hareket ettir, Döndür ile çevir, Düşür ile kilitle.' },
+      { title: 'Satır Temizle ve Saldır', desc: '2+ satır temizleyince diğer oyunculara çöp blok gönderirsin!' },
+      { title: 'Son Ayakta Kalan Kazanır', desc: 'Tavanı aşmadan hayatta kal, zafere ulaş!' }
+    ]
+  },
+  'lost-and-found': {
+    icon: '🧸',
+    title: 'Lost & Found',
+    tutorials: [
+      { title: 'Milo & Nia Ortaklığı', desc: 'Milo metal nesneleri iter/çeker, Nia kanca ile yukarı tırmanır.' },
+      { title: 'Birlikte Bulmacaları Çöz', desc: 'Düğmelere basarak kapıları açın ve lazerleri aşın.' },
+      { title: 'Kasa Açma Eşleşmesi', desc: 'Son aşamada frekans ve faz açılarını eşleştirip kasayı açın!' }
+    ]
+  },
+  'rc-rush': {
+    icon: '🏎️',
+    title: 'RC Rush',
+    tutorials: [
+      { title: 'Direksiyon & Gaz', desc: 'Arcade kontrollerle virajları dön, rampalardan zıpla.' },
+      { title: 'Alevli Nitro Turbo', desc: 'Düzlüklerde ve sollamalarda Nitro basarak en yüksek hıza çık!' },
+      { title: 'Gizemli Güç Kutuları', desc: 'Pistteki kutulardan Roket ve Kalkan kazanarak rakiplerini geç!' }
+    ]
+  },
+  'transfer-showdown': {
+    icon: '⚽',
+    title: 'Transfer Showdown',
+    tutorials: [
+      { title: 'Açık Artırma & 100 Kredi', desc: '100 kredi bütçeyle 11 futbolcu transfer et. Bütçe korumasına ve mevki kotalarına dikkat et!' },
+      { title: 'Kadro & Taktik Belirle', desc: 'Dizilişini (4-3-3, 4-4-2 vb.), oyun stilini ve savunma çizgini rakibe göre ayarla.' },
+      { title: 'Canlı Maç & Son 15 Dk', desc: 'Dev ekranda 3D maç pozisyonlarını izle, devrede taktiğini tazele, son 15 dk tüm hatlarıyla saldır!' }
+    ]
+  }
+};
 
 const sdk = new ControllerSDK(`http://${window.location.hostname}:2567`);
 
@@ -43,6 +143,25 @@ export function App() {
   const [selectedOption, setSelectedOption] = useState(-1);
   const [isCorrect, setIsCorrect] = useState(false);
   const [streak, setStreak] = useState(0);
+
+  // Özelleştirme ve Staging Durumu
+  const [myColor, setMyColor] = useState('#3b82f6');
+  const [myCostume, setMyCostume] = useState('standard');
+  const [stagingTab, setStagingTab] = useState<'customize' | 'tutorial' | 'settings'>('customize');
+  const [stageSettings, setStageSettings] = useState<{
+    totalRounds?: number;
+    speed?: string;
+    questionCount?: number;
+    timeLimit?: number;
+    selectedCategories?: string[];
+    [key: string]: any;
+  }>({
+    totalRounds: 3,
+    speed: 'normal',
+    questionCount: 5,
+    timeLimit: 15,
+    selectedCategories: ['bilim', 'tarih', 'cografya', 'sinema', 'oyun', 'spor', 'genel']
+  });
 
   // Colyseus State Revision Tick (force re-render on nested state mutations)
   const [tick, setTick] = useState(0);
@@ -124,6 +243,15 @@ export function App() {
         setStreak(found.streak || 0);
         setMyTeam((found.team as any) || '');
         setControlledPlayerId(found.controlledPlayerId || '');
+        if (found.color) setMyColor(found.color);
+        if (found.costume) setMyCostume(found.costume);
+      }
+
+      if (state.stageSettings) {
+        try {
+          const parsed = JSON.parse(state.stageSettings);
+          setStageSettings((s) => ({ ...s, ...parsed }));
+        } catch (e) {}
       }
     };
   }, [nickname]);
@@ -181,6 +309,82 @@ export function App() {
   const handleReturnToLobby = () => {
     sdk.returnToLobby();
   };
+
+  const handleSelectColor = (color: string) => {
+    setMyColor(color);
+    sdk.customizePlayer({ color });
+  };
+
+  const handleSelectCostume = (costume: string) => {
+    setMyCostume(costume);
+    sdk.customizePlayer({ costume });
+  };
+
+  const handleLaunchMatch = () => {
+    sdk.launchMatch();
+  };
+
+  const handleUpdateStageSettings = (settings: any) => {
+    const updated = { ...stageSettings, ...settings };
+    setStageSettings(updated);
+    sdk.updateGameSettings(updated);
+  };
+
+  const renderWithHostOverlay = (content: any) => (
+    <>
+      {isHost && (
+        <div style={{
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
+          zIndex: 9999,
+          display: 'flex',
+          gap: '6px',
+          background: 'rgba(15, 23, 42, 0.92)',
+          border: '1.5px solid rgba(56, 189, 248, 0.4)',
+          borderRadius: '20px',
+          padding: '4px 8px',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.6)'
+        }}>
+          <button
+            type="button"
+            style={{
+              background: '#f59e0b',
+              border: 'none',
+              borderRadius: '14px',
+              color: '#0f172a',
+              fontWeight: 800,
+              fontSize: '0.8rem',
+              padding: '4px 9px',
+              cursor: 'pointer',
+              margin: 0
+            }}
+            onClick={() => sdk.pauseGame()}
+          >
+            ⏸️ Durdur
+          </button>
+          <button
+            type="button"
+            style={{
+              background: 'rgba(239, 68, 68, 0.25)',
+              border: '1px solid #ef4444',
+              borderRadius: '14px',
+              color: '#fca5a5',
+              fontWeight: 800,
+              fontSize: '0.8rem',
+              padding: '4px 9px',
+              cursor: 'pointer',
+              margin: 0
+            }}
+            onClick={() => sdk.returnToLobby()}
+          >
+            🏠 Lobi
+          </button>
+        </div>
+      )}
+      {content}
+    </>
+  );
 
   // ─── 1. KATILMA EKRANI ───
   if (view === 'join') {
@@ -275,6 +479,12 @@ export function App() {
             >
               🏎️ RC Rush
             </button>
+            <button
+              class={`lobby-tab-btn ${selectedGameId === 'transfer-showdown' ? 'active' : ''}`}
+              onClick={() => handleSelectGame('transfer-showdown')}
+            >
+              ⚽ Showdown
+            </button>
           </div>
         )}
 
@@ -293,6 +503,8 @@ export function App() {
               ? '🧸 Lost & Found'
               : selectedGameId === 'rc-rush'
               ? '🏎️ RC Rush'
+              : selectedGameId === 'transfer-showdown'
+              ? '⚽ Transfer Showdown'
               : '⚡ Reaction Rush'}
           </div>
         )}
@@ -528,12 +740,608 @@ export function App() {
     );
   }
 
+  // ─── GLOBAL PAUSE SCREEN (DURAKLATMA EKRANI) ───
+  if (rawState?.isPaused) {
+    return (
+      <div class="container" style={{ maxHeight: '100vh', overflowY: 'auto', padding: '1.5rem', background: 'radial-gradient(circle at 50% 30%, rgba(30, 58, 138, 0.5) 0%, #0b0f19 80%)' }}>
+        <div style={{ fontSize: '4rem', marginBottom: '0.4rem', filter: 'drop-shadow(0 0 20px rgba(56, 189, 248, 0.5))' }}>⏸️</div>
+        <h2 style={{ fontSize: '2.2rem', fontWeight: 900, color: '#38bdf8', margin: '0 0 0.5rem', letterSpacing: '0.05em' }}>
+          OYUN DURAKLATILDI
+        </h2>
+        <p style={{ color: '#94a3b8', fontSize: '0.95rem', margin: '0 0 1.5rem', maxWidth: '340px' }}>
+          {rawState?.pauseReason || 'Oda yöneticisi tarafından duraklatıldı.'}
+        </p>
+
+        {isHost ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', width: '100%', maxWidth: '340px' }}>
+            {/* 1. Oyuna Devam Et */}
+            <button
+              type="button"
+              style={{
+                background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                border: 'none',
+                color: 'white',
+                fontWeight: 800,
+                fontSize: '1.2rem',
+                padding: '1rem',
+                borderRadius: '0.9rem',
+                cursor: 'pointer',
+                margin: 0,
+                boxShadow: '0 0 20px rgba(34, 197, 94, 0.4)'
+              }}
+              onClick={() => sdk.resumeGame()}
+            >
+              ▶️ Oyuna Devam Et
+            </button>
+
+            {/* 2. Durdurma Ekranında Oyun Değiştir */}
+            <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '1rem', padding: '0.9rem', textAlign: 'left' }}>
+              <div style={{ fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 800, marginBottom: '0.6rem' }}>
+                🎮 Oyunu Değiştir (Yeni Oyun Seç):
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
+                {[
+                  { id: 'reaction-rush', label: '⚡ Refleks' },
+                  { id: 'quiz-arena', label: '🧠 Quiz' },
+                  { id: 'mini-football', label: '⚽ Futbol' },
+                  { id: 'bluff-trivia', label: '🎭 Blöf' },
+                  { id: 'mini-tetris', label: '🧱 Tetris' },
+                  { id: 'lost-and-found', label: '🧸 L&F' },
+                  { id: 'rc-rush', label: '🏎️ RC Rush' },
+                  { id: 'transfer-showdown', label: '⚽ Showdown' }
+                ].map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    style={{
+                      background: (activeGameId || selectedGameId) === g.id ? '#2563eb' : '#0f172a',
+                      border: `1.5px solid ${(activeGameId || selectedGameId) === g.id ? '#60a5fa' : '#334155'}`,
+                      color: 'white',
+                      padding: '0.55rem 0.2rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      borderRadius: '0.5rem',
+                      margin: 0,
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => sdk.selectGame(g.id)}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Ana Menüye Dön */}
+            <button
+              type="button"
+              style={{
+                background: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid #ef4444',
+                color: '#fca5a5',
+                fontWeight: 800,
+                fontSize: '1rem',
+                padding: '0.85rem',
+                borderRadius: '0.8rem',
+                cursor: 'pointer',
+                margin: 0
+              }}
+              onClick={() => sdk.returnToLobby()}
+            >
+              🏠 Ana Menüye / Lobiye Dön
+            </button>
+          </div>
+        ) : (
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '1rem',
+            padding: '1.5rem',
+            color: '#e2e8f0',
+            fontSize: '0.95rem',
+            maxWidth: '320px',
+            lineHeight: 1.5
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⏳</div>
+            Oda yöneticisi oyunu duraklattı. Devam etmesi veya oyunu değiştirmesi bekleniyor...
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ─── 2.5. OYUN İÇİ STAGING (PRE-GAME HUB / ÖZELLEŞTİRME & AYARLAR) ───
+  if (gameStatus === 'game_staging') {
+    const currentGameId = activeGameId || selectedGameId || 'reaction-rush';
+    const currentGameMeta = GAME_METAS[currentGameId] || GAME_METAS['reaction-rush'];
+
+    return (
+      <div class="container" style={{ maxHeight: '100vh', overflowY: 'auto', padding: '1rem', justifyContent: 'flex-start' }}>
+        {/* Header */}
+        <div style={{ width: '100%', maxWidth: '420px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span style={{ fontSize: '2rem' }}>{currentGameMeta.icon}</span>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#38bdf8' }}>{currentGameMeta.title}</div>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Oyun İçi Hazırlık & Özelleştirme</div>
+            </div>
+          </div>
+          {isHost && (
+            <span style={{ background: 'rgba(250, 204, 21, 0.2)', border: '1px solid #facc15', color: '#facc15', borderRadius: '12px', padding: '3px 8px', fontSize: '0.75rem', fontWeight: 800 }}>
+              👑 HOST
+            </span>
+          )}
+        </div>
+
+        {/* Tab Switcher */}
+        <div style={{ display: 'flex', width: '100%', maxWidth: '420px', background: '#1e293b', borderRadius: '0.8rem', padding: '4px', marginBottom: '1rem', gap: '4px' }}>
+          <button
+            type="button"
+            style={{
+              flex: 1,
+              background: stagingTab === 'customize' ? '#38bdf8' : 'transparent',
+              color: stagingTab === 'customize' ? '#0f172a' : '#94a3b8',
+              border: 'none',
+              padding: '0.5rem 0.2rem',
+              fontSize: '0.85rem',
+              fontWeight: 800,
+              borderRadius: '0.6rem',
+              margin: 0
+            }}
+            onClick={() => setStagingTab('customize')}
+          >
+            🎨 Özelleştir
+          </button>
+          <button
+            type="button"
+            style={{
+              flex: 1,
+              background: stagingTab === 'tutorial' ? '#38bdf8' : 'transparent',
+              color: stagingTab === 'tutorial' ? '#0f172a' : '#94a3b8',
+              border: 'none',
+              padding: '0.5rem 0.2rem',
+              fontSize: '0.85rem',
+              fontWeight: 800,
+              borderRadius: '0.6rem',
+              margin: 0
+            }}
+            onClick={() => setStagingTab('tutorial')}
+          >
+            📖 Nasıl Oynanır
+          </button>
+          <button
+            type="button"
+            style={{
+              flex: 1,
+              background: stagingTab === 'settings' ? '#38bdf8' : 'transparent',
+              color: stagingTab === 'settings' ? '#0f172a' : '#94a3b8',
+              border: 'none',
+              padding: '0.5rem 0.2rem',
+              fontSize: '0.85rem',
+              fontWeight: 800,
+              borderRadius: '0.6rem',
+              margin: 0
+            }}
+            onClick={() => setStagingTab('settings')}
+          >
+            ⚙️ Ayarlar
+          </button>
+        </div>
+
+        {/* Tab 1: Özelleştirme */}
+        {stagingTab === 'customize' && (
+          <div style={{ width: '100%', maxWidth: '420px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Renk Paleti */}
+            <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '1rem', padding: '0.9rem', textAlign: 'left' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.6rem' }}>
+                🎨 Renk Paketi
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.6rem' }}>
+                {COLOR_PALETTE.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    style={{
+                      height: '42px',
+                      borderRadius: '0.6rem',
+                      background: c,
+                      border: myColor === c ? '3px solid white' : '1px solid rgba(255,255,255,0.2)',
+                      boxShadow: myColor === c ? `0 0 15px ${c}` : 'none',
+                      cursor: 'pointer',
+                      margin: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 900
+                    }}
+                    onClick={() => handleSelectColor(c)}
+                  >
+                    {myColor === c ? '✓' : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Kostüm Seçimi */}
+            <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '1rem', padding: '0.9rem', textAlign: 'left' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.6rem' }}>
+                👕 Kostüm / Stil Paketi
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                {COSTUME_ITEMS.map((cost) => (
+                  <button
+                    key={cost.id}
+                    type="button"
+                    style={{
+                      background: myCostume === cost.id ? 'rgba(56, 189, 248, 0.2)' : '#0f172a',
+                      border: `1.5px solid ${myCostume === cost.id ? '#38bdf8' : '#334155'}`,
+                      borderRadius: '0.6rem',
+                      padding: '0.6rem 0.4rem',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      margin: 0
+                    }}
+                    onClick={() => handleSelectCostume(cost.id)}
+                  >
+                    <span style={{ fontSize: '1.2rem' }}>{cost.icon}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cost.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: Nasıl Oynanır */}
+        {stagingTab === 'tutorial' && (
+          <div style={{ width: '100%', maxWidth: '420px', display: 'flex', flexDirection: 'column', gap: '0.7rem', textAlign: 'left' }}>
+            {currentGameMeta.tutorials.map((t, idx) => (
+              <div key={idx} style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '0.8rem', padding: '0.8rem', display: 'flex', gap: '0.7rem', alignItems: 'flex-start' }}>
+                <span style={{ background: '#38bdf8', color: '#0f172a', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.8rem', flexShrink: 0 }}>
+                  {idx + 1}
+                </span>
+                <div>
+                  <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '0.9rem', marginBottom: '0.2rem' }}>{t.title}</div>
+                  <div style={{ color: '#94a3b8', fontSize: '0.8rem', lineHeight: 1.3 }}>{t.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Tab 3: Ayarlar */}
+        {stagingTab === 'settings' && (
+          <div style={{ width: '100%', maxWidth: '420px', display: 'flex', flexDirection: 'column', gap: '0.8rem', textAlign: 'left' }}>
+            <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '1rem', padding: '0.9rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <div style={{ fontSize: '0.9rem', fontWeight: 900, color: '#38bdf8' }}>
+                  ⚙️ {currentGameMeta.title} Ayarları
+                </div>
+                {!isHost && (
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8', background: '#0f172a', padding: '2px 6px', borderRadius: '4px' }}>
+                    Sadece İzleme
+                  </span>
+                )}
+              </div>
+
+              {currentGameId === 'quiz-arena' ? (
+                <>
+                  {/* Kategori Seçimi */}
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                      <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 700 }}>
+                        📚 Soru Kategorileri:
+                      </div>
+                      {isHost && (
+                        <div style={{ display: 'flex', gap: '5px' }}>
+                          <button
+                            type="button"
+                            style={{
+                              background: '#0284c7',
+                              border: 'none',
+                              color: 'white',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              margin: 0
+                            }}
+                            onClick={() => {
+                              const allCatIds = QUIZ_CATEGORIES.map((c) => c.id);
+                              handleUpdateStageSettings({ selectedCategories: allCatIds });
+                            }}
+                          >
+                            Tümü
+                          </button>
+                          <button
+                            type="button"
+                            style={{
+                              background: '#334155',
+                              border: 'none',
+                              color: '#94a3b8',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              margin: 0
+                            }}
+                            onClick={() => {
+                              handleUpdateStageSettings({ selectedCategories: ['genel'] });
+                            }}
+                          >
+                            Sıfırla
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
+                      {QUIZ_CATEGORIES.map((cat) => {
+                        const currentCats: string[] = stageSettings.selectedCategories && stageSettings.selectedCategories.length > 0
+                          ? stageSettings.selectedCategories
+                          : ['bilim', 'tarih', 'cografya', 'sinema', 'oyun', 'spor', 'genel'];
+                        const isSelected = currentCats.includes(cat.id);
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            disabled={!isHost}
+                            style={{
+                              background: isSelected ? 'rgba(14, 165, 233, 0.22)' : '#0f172a',
+                              border: `1.5px solid ${isSelected ? '#38bdf8' : '#334155'}`,
+                              color: isSelected ? '#ffffff' : '#94a3b8',
+                              padding: '0.5rem 0.45rem',
+                              fontSize: '0.78rem',
+                              fontWeight: isSelected ? 800 : 500,
+                              borderRadius: '0.6rem',
+                              margin: 0,
+                              cursor: isHost ? 'pointer' : 'default',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              boxShadow: isSelected ? '0 0 10px rgba(56, 189, 248, 0.15)' : 'none',
+                              opacity: !isHost && !isSelected ? 0.45 : 1
+                            }}
+                            onClick={() => {
+                              if (!isHost) return;
+                              let next: string[];
+                              if (isSelected) {
+                                if (currentCats.length <= 1) return;
+                                next = currentCats.filter((id) => id !== cat.id);
+                              } else {
+                                next = [...currentCats, cat.id];
+                              }
+                              handleUpdateStageSettings({ selectedCategories: next });
+                            }}
+                          >
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span>{cat.icon}</span>
+                              <span>{cat.name}</span>
+                            </span>
+                            <span style={{ fontSize: '0.85rem', color: isSelected ? '#38bdf8' : '#475569', marginLeft: '4px' }}>
+                              {isSelected ? '✓' : '○'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Soru Sayısı Ayarı */}
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '0.35rem', fontWeight: 700 }}>
+                      🔢 Soru Sayısı:
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      {[5, 10, 15].map((cnt) => {
+                        const curCount = stageSettings.questionCount || stageSettings.totalRounds || 5;
+                        const isCur = curCount === cnt;
+                        return (
+                          <button
+                            key={cnt}
+                            type="button"
+                            disabled={!isHost}
+                            style={{
+                              flex: 1,
+                              background: isCur ? '#38bdf8' : '#0f172a',
+                              color: isCur ? '#0f172a' : 'white',
+                              border: `1.5px solid ${isCur ? '#38bdf8' : '#334155'}`,
+                              borderRadius: '0.5rem',
+                              padding: '0.45rem 0.2rem',
+                              fontSize: '0.82rem',
+                              fontWeight: 800,
+                              margin: 0,
+                              cursor: isHost ? 'pointer' : 'default',
+                              opacity: !isHost && !isCur ? 0.45 : 1
+                            }}
+                            onClick={() => isHost && handleUpdateStageSettings({ questionCount: cnt, totalRounds: cnt })}
+                          >
+                            {cnt} Soru
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Soru Başına Süre Ayarı */}
+                  <div>
+                    <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '0.35rem', fontWeight: 700 }}>
+                      ⏱️ Soru Başına Süre:
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      {[10, 15, 20].map((sec) => {
+                        const curLimit = stageSettings.timeLimit || 15;
+                        const isCur = curLimit === sec;
+                        return (
+                          <button
+                            key={sec}
+                            type="button"
+                            disabled={!isHost}
+                            style={{
+                              flex: 1,
+                              background: isCur ? '#38bdf8' : '#0f172a',
+                              color: isCur ? '#0f172a' : 'white',
+                              border: `1.5px solid ${isCur ? '#38bdf8' : '#334155'}`,
+                              borderRadius: '0.5rem',
+                              padding: '0.45rem 0.2rem',
+                              fontSize: '0.82rem',
+                              fontWeight: 800,
+                              margin: 0,
+                              cursor: isHost ? 'pointer' : 'default',
+                              opacity: !isHost && !isCur ? 0.45 : 1
+                            }}
+                            onClick={() => isHost && handleUpdateStageSettings({ timeLimit: sec })}
+                          >
+                            {sec}sn
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Tur / Soru / Süre Ayarı */}
+                  <div style={{ marginBottom: '0.8rem' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '0.3rem', fontWeight: 600 }}>
+                      Tur / Round Sayısı:
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      {[3, 5, 7].map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          disabled={!isHost}
+                          style={{
+                            flex: 1,
+                            background: stageSettings.totalRounds === num ? '#38bdf8' : '#0f172a',
+                            color: stageSettings.totalRounds === num ? '#0f172a' : 'white',
+                            border: '1px solid #334155',
+                            borderRadius: '0.5rem',
+                            padding: '0.4rem',
+                            fontSize: '0.85rem',
+                            fontWeight: 800,
+                            margin: 0,
+                            cursor: isHost ? 'pointer' : 'default'
+                          }}
+                          onClick={() => isHost && handleUpdateStageSettings({ totalRounds: num })}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Zorluk / Hız Ayarı */}
+                  <div>
+                    <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '0.3rem', fontWeight: 600 }}>
+                      Zorluk / Hız Sınıfı:
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      {['normal', 'fast', 'extreme'].map((speed) => (
+                        <button
+                          key={speed}
+                          type="button"
+                          disabled={!isHost}
+                          style={{
+                            flex: 1,
+                            background: stageSettings.speed === speed ? '#38bdf8' : '#0f172a',
+                            color: stageSettings.speed === speed ? '#0f172a' : 'white',
+                            border: '1px solid #334155',
+                            borderRadius: '0.5rem',
+                            padding: '0.4rem',
+                            fontSize: '0.8rem',
+                            fontWeight: 800,
+                            textTransform: 'uppercase',
+                            margin: 0,
+                            cursor: isHost ? 'pointer' : 'default'
+                          }}
+                          onClick={() => isHost && handleUpdateStageSettings({ speed })}
+                        >
+                          {speed === 'normal' ? 'Normal' : speed === 'fast' ? 'Hızlı' : 'Çılgın'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Alt Butonlar */}
+        <div style={{ width: '100%', maxWidth: '420px', marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <button
+            type="button"
+            class={isReady ? 'cancel-btn' : 'ready-btn'}
+            style={{ height: '60px', fontSize: '1.3rem' }}
+            onClick={handleToggleReady}
+          >
+            {isReady ? 'İPTAL' : '✓ HAZIRIM!'}
+          </button>
+
+          {isHost ? (
+            <>
+              <button
+                type="button"
+                style={{
+                  background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                  border: 'none',
+                  color: 'white',
+                  fontWeight: 900,
+                  fontSize: '1.25rem',
+                  padding: '1rem',
+                  borderRadius: '0.8rem',
+                  cursor: 'pointer',
+                  margin: 0,
+                  boxShadow: '0 0 20px rgba(34, 197, 94, 0.4)'
+                }}
+                onClick={handleLaunchMatch}
+              >
+                ▶️ OYUNU BAŞLAT 🎮
+              </button>
+              <button
+                type="button"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  color: '#fca5a5',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  padding: '0.6rem',
+                  borderRadius: '0.6rem',
+                  cursor: 'pointer',
+                  margin: 0
+                }}
+                onClick={handleReturnToLobby}
+              >
+                🏠 Ana Menüye / Lobiye Dön
+              </button>
+            </>
+          ) : (
+            <div style={{ fontSize: '0.85rem', color: '#94a3b8', textAlign: 'center', marginTop: '0.4rem' }}>
+              👑 Oda yöneticisi maçı başlatınca oyun başlayacak...
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // ─── MINI FOOTBALL GAMEPAD EKRANI ───
   if (
     gameStatus === 'football_playing' ||
     (activeGameId === 'mini-football' && gameStatus !== 'game_over' && gameStatus !== 'lobby')
   ) {
-    return (
+    return renderWithHostOverlay(
       <FootballGamepad
         tick={tick}
         sdk={sdk}
@@ -560,7 +1368,7 @@ export function App() {
       });
     }
 
-    return (
+    return renderWithHostOverlay(
       <BluffTriviaController
         tick={tick}
         sdk={sdk}
@@ -577,7 +1385,7 @@ export function App() {
     gameStatus === 'tetris_playing' ||
     (activeGameId === 'mini-tetris' && gameStatus !== 'game_over' && gameStatus !== 'lobby')
   ) {
-    return (
+    return renderWithHostOverlay(
       <MiniTetrisGamepad
         sdk={sdk}
         myNickname={nickname}
@@ -591,7 +1399,7 @@ export function App() {
     gameStatus === 'lost_and_found_playing' ||
     (activeGameId === 'lost-and-found' && gameStatus !== 'game_over' && gameStatus !== 'lobby')
   ) {
-    return (
+    return renderWithHostOverlay(
       <LostAndFoundGamepad
         sdk={sdk}
         myNickname={nickname}
@@ -605,7 +1413,7 @@ export function App() {
     gameStatus === 'rc_rush_playing' ||
     (activeGameId === 'rc-rush' && gameStatus !== 'game_over' && gameStatus !== 'lobby')
   ) {
-    return (
+    return renderWithHostOverlay(
       <RcRushGamepad
         sdk={sdk}
         myNickname={nickname}
@@ -614,10 +1422,23 @@ export function App() {
     );
   }
 
+  // ─── TRANSFER SHOWDOWN CONTROLLER ───
+  if (
+    gameStatus === 'showdown_playing' ||
+    (activeGameId === 'transfer-showdown' && gameStatus !== 'game_over' && gameStatus !== 'lobby')
+  ) {
+    return renderWithHostOverlay(
+      <TransferShowdownController
+        sdk={sdk}
+        playerId={sdk.sessionId || ''}
+      />
+    );
+  }
+
 
   // ─── 3. REACTION RUSH GERİ SAYIM ───
   if (gameStatus === 'countdown') {
-    return (
+    return renderWithHostOverlay(
       <div class="game-container countdown-screen">
         <div style={{ color: '#94a3b8', fontSize: '1.4rem' }}>
           ROUND {currentRound} / {totalRounds}
@@ -635,7 +1456,7 @@ export function App() {
   // ─── 4. REACTION RUSH KIRMIZI EVRE ───
   if (gameStatus === 'red') {
     if (hasPressed && lastReactionTime === -1) {
-      return (
+      return renderWithHostOverlay(
         <div class="game-container red-screen">
           <div class="foul-box">
             ❌ FAUL!
@@ -647,7 +1468,7 @@ export function App() {
       );
     }
 
-    return (
+    return renderWithHostOverlay(
       <div
         class="game-container red-screen"
         onPointerDown={handleReactionPress}
@@ -667,7 +1488,7 @@ export function App() {
   if (gameStatus === 'green') {
     if (hasPressed) {
       if (lastReactionTime === -1) {
-        return (
+        return renderWithHostOverlay(
           <div class="game-container green-screen">
             <div class="foul-box">
               ❌ FAUL!
@@ -679,7 +1500,7 @@ export function App() {
         );
       }
 
-      return (
+      return renderWithHostOverlay(
         <div class="game-container green-screen">
           <div class="success-box">
             ⚡ {lastReactionTime > 0 ? `${lastReactionTime} ms!` : 'BASILDI!'}
@@ -691,7 +1512,7 @@ export function App() {
       );
     }
 
-    return (
+    return renderWithHostOverlay(
       <div
         class="game-container green-screen"
         onPointerDown={handleReactionPress}
@@ -713,7 +1534,7 @@ export function App() {
   if (gameStatus === 'quiz_question') {
     const letters = ['A', 'B', 'C', 'D'];
 
-    return (
+    return renderWithHostOverlay(
       <div class="container" style={{ padding: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '450px', marginBottom: '0.5rem', color: '#94a3b8', fontWeight: 'bold' }}>
           <span>SORU {currentRound} / {totalRounds}</span>
@@ -775,7 +1596,7 @@ export function App() {
     const letters = ['A', 'B', 'C', 'D'];
     const correctLetter = quizCorrectIndex >= 0 ? letters[quizCorrectIndex] : '?';
 
-    return (
+    return renderWithHostOverlay(
       <div class="container">
         {isCorrect ? (
           <div class="success-box" style={{ maxWidth: '360px' }}>
@@ -810,7 +1631,7 @@ export function App() {
 
   // ─── 8. REACTION RUSH ROUND SONUCU ───
   if (gameStatus === 'round_result') {
-    return (
+    return renderWithHostOverlay(
       <div class="container">
         <h2 style={{ color: '#38bdf8' }}>ROUND {currentRound} BİTTİ</h2>
 

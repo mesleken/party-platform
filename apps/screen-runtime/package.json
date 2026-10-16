@@ -19,6 +19,7 @@
     "@games/mini-football": "workspace:*",
     "@games/mini-tetris": "workspace:*",
     "@games/rc-rush": "workspace:*",
+    "@games/transfer-showdown": "workspace:*",
     "@platform/sdk-core": "workspace:*",
     "@platform/sdk-screen": "workspace:*",
     "qrcode": "^1.5.4",

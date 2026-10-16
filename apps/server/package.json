@@ -18,6 +18,7 @@
     "@games/mini-football": "workspace:*",
     "@games/mini-tetris": "workspace:*",
     "@games/rc-rush": "workspace:*",
+    "@games/transfer-showdown": "workspace:*",
     "@platform/sdk-core": "workspace:*",
     "cors": "^2.8.6",
     "express": "^5.2.1"

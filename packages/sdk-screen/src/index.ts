@@ -34,6 +34,10 @@ export class ScreenSDK {
         }
       });
 
+      this.room.onMessage('SHOWDOWN_SNAPSHOT', (payload: any) => {
+        this.onShowdownState(payload);
+      });
+
       return this.room.roomId; // 6 haneli kod
     } catch (error) {
       console.error('[ScreenSDK] Session oluşturulamadı', error);
@@ -47,6 +51,7 @@ export class ScreenSDK {
   public onLostAndFoundState: (state: any) => void = () => {};
   public onRcRushState: (state: any) => void = () => {};
   public onRcRushEvent: (event: any) => void = () => {};
+  public onShowdownState: (state: any) => void = () => {};
 
   public selectGame(gameId: string) {
     this.room?.send('SELECT_GAME', { gameId });
@@ -58,6 +63,22 @@ export class ScreenSDK {
 
   public returnToLobby() {
     this.room?.send('RETURN_TO_LOBBY');
+  }
+
+  public pauseGame() {
+    this.room?.send('PAUSE_GAME');
+  }
+
+  public resumeGame() {
+    this.room?.send('RESUME_GAME');
+  }
+
+  public launchMatch() {
+    this.room?.send('LAUNCH_MATCH');
+  }
+
+  public updateGameSettings(settings: any) {
+    this.room?.send('UPDATE_GAME_SETTINGS', settings);
   }
 
   public getRoomCode(): string | undefined {

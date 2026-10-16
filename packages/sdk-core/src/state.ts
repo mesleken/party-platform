@@ -24,7 +24,10 @@ export const PlayerState = schema({
   hasVotedBluff: t.boolean(),
   votedBluffId: t.string(),
   roundBluffGains: t.number(),
-  trickedCount: t.number()
+  trickedCount: t.number(),
+  // Özelleştirme alanları (Renk & Kostüm Paketleri)
+  color: t.string(),
+  costume: t.string()
 });
 
 
@@ -134,6 +137,11 @@ export const SessionState = schema({
 
   // Bluff Trivia Spesifik State
   bluffTriviaMatch: t.ref(BluffTriviaMatchState),
+
+  // Duraklatma (Pause) ve Oyun İçi Arayüz (Staging / Ayarlar) Alanları
+  isPaused: t.boolean(),
+  pauseReason: t.string(),
+  stageSettings: t.string(), // JSON formatında oyun ayarları
 
   players: t.map(PlayerState)
 });

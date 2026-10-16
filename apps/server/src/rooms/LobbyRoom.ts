@@ -5,13 +5,20 @@ import {
   PlayerState,
   PlayerStateType,
   QUIZ_QUESTIONS,
-  QuizQuestion
+  QuizQuestion,
+  filterAndShuffleQuestions
 } from '@platform/sdk-core';
 import { MiniFootballGame } from '@games/mini-football';
 import { BluffTriviaGame } from '@games/bluff-trivia';
 import { MiniTetrisGame, type TetrisInput, type TetrisMatchSnapshot } from '@games/mini-tetris';
 import { LostAndFoundGame, type PlayerInput as LostAndFoundInput, type LostAndFoundSnapshot } from '@games/lost-and-found';
 import { RcRushGame, type RcRushInput, type RcRushSnapshot } from '@games/rc-rush';
+import {
+  TransferShowdownGame,
+  type BidAction,
+  type TacticsSubmission,
+  type ManagerTactics
+} from '@games/transfer-showdown';
 
 export class LobbyRoom extends Room<{ state: SessionStateType }> {
   maxClients = 16; // 1 Ekran + 15 Telefon
@@ -20,6 +27,7 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
   private quizInterval?: NodeJS.Timeout;
 
   private currentQuizQuestion?: QuizQuestion;
+  private activeQuizQuestions: QuizQuestion[] = [];
   private questionStartTime = 0;
 
   private footballGame?: MiniFootballGame;
@@ -27,6 +35,7 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
   private miniTetrisGame?: MiniTetrisGame;
   private lostAndFoundGame?: LostAndFoundGame;
   private rcRushGame?: RcRushGame;
+  private transferShowdownGame?: TransferShowdownGame;
 
   onCreate(options: any) {
     this.setState(new SessionState());
@@ -48,6 +57,9 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
     this.state.countdown = 0;
     this.state.greenTimestamp = 0;
     this.state.winnerNickname = '';
+    this.state.isPaused = false;
+    this.state.pauseReason = '';
+    this.state.stageSettings = '';
 
     // Quiz alanları
     this.state.quizQuestion = '';
@@ -74,8 +86,13 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
       }
     });
 
-    // Lobide oyun seçme
+    // Lobide veya Duraklatma / Staging anında oyun seçme (Host veya Ekran)
     this.onMessage('SELECT_GAME', (client, message: { gameId: string }) => {
+      const player = this.state.players.get(client.sessionId);
+      if (player && !player.isHost) {
+        console.log(`[LobbyRoom] ${player.nickname} host olmadığı için oyun seçemez.`);
+        return;
+      }
       if (
         message &&
         (message.gameId === 'reaction-rush' ||
@@ -84,14 +101,20 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
           message.gameId === 'bluff-trivia' ||
           message.gameId === 'mini-tetris' ||
           message.gameId === 'lost-and-found' ||
-          message.gameId === 'rc-rush')
+          message.gameId === 'rc-rush' ||
+          message.gameId === 'transfer-showdown')
       ) {
         this.state.selectedGameId = message.gameId;
         console.log(`[LobbyRoom] Seçili oyun güncellendi: ${this.state.selectedGameId}`);
+
+        // Eğer oyun duraklatılmışken (pause) veya staging evresindeyken oyun değiştiriliyorsa:
+        if (this.state.isPaused || this.state.status === 'game_staging') {
+          this.switchGameFromPause(message.gameId);
+        }
       }
     });
 
-    // Oyunu başlatma (Host veya Ekran)
+    // Lobiden Oyun İçi Özel Arayüze / Staging'e Geçiş (Host veya Ekran)
     this.onMessage('START_GAME', (client) => {
       const player = this.state.players.get(client.sessionId);
       if (player && !player.isHost) {
@@ -99,39 +122,77 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
         return;
       }
 
-      if (this.state.selectedGameId === 'quiz-arena') {
-        this.startQuizGame();
-      } else if (this.state.selectedGameId === 'mini-football') {
-        this.startFootballGame();
-      } else if (this.state.selectedGameId === 'bluff-trivia') {
-        this.startBluffTriviaGame();
-      } else if (this.state.selectedGameId === 'mini-tetris') {
-        this.startMiniTetrisGame();
-      } else if (this.state.selectedGameId === 'lost-and-found') {
-        this.startLostAndFoundGame();
-      } else if (this.state.selectedGameId === 'rc-rush') {
-        this.startRcRushGame();
-      } else {
-        this.startReactionRushGame();
+      this.enterGameStaging(this.state.selectedGameId);
+    });
+
+    // Oyun İçi Özel Arayüzden (Staging) Fiilen Maçı Başlatma (Host veya Ekran)
+    this.onMessage('LAUNCH_MATCH', (client) => {
+      const player = this.state.players.get(client.sessionId);
+      if (player && !player.isHost) {
+        console.log(`[LobbyRoom] ${player.nickname} host olmadığı için maçı başlatamaz.`);
+        return;
       }
+
+      this.launchCurrentMatch();
+    });
+
+    // Oyuncu Renk & Kostüm Özelleştirmesi (Her oyuncu kendi görünümünü seçebilir)
+    this.onMessage('CUSTOMIZE_PLAYER', (client, message: { color?: string; costume?: string }) => {
+      const player = this.state.players.get(client.sessionId);
+      if (player) {
+        if (message.color) player.color = message.color;
+        if (message.costume) player.costume = message.costume;
+        console.log(`[LobbyRoom] Oyuncu ${player.nickname} özelleştirildi: Renk=${player.color}, Kostüm=${player.costume}`);
+      }
+    });
+
+    // Oyun Ayarlarını Güncelleme (Sadece Host veya Ekran)
+    this.onMessage('UPDATE_GAME_SETTINGS', (client, message: any) => {
+      const player = this.state.players.get(client.sessionId);
+      if (player && !player.isHost) return;
+      this.state.stageSettings = JSON.stringify(message.settings || message);
+    });
+
+    // Oyunu Duraklatma (Pause) - Sadece Oda Yöneticisi
+    this.onMessage('PAUSE_GAME', (client) => {
+      const player = this.state.players.get(client.sessionId);
+      if (player && !player.isHost) {
+        console.log(`[LobbyRoom] ${player.nickname} host olmadığı için oyunu duraklatamaz.`);
+        return;
+      }
+      this.pauseGame();
+    });
+
+    // Oyunu Devam Ettirme (Resume) - Sadece Oda Yöneticisi
+    this.onMessage('RESUME_GAME', (client) => {
+      const player = this.state.players.get(client.sessionId);
+      if (player && !player.isHost) {
+        console.log(`[LobbyRoom] ${player.nickname} host olmadığı için oyunu devam ettiremez.`);
+        return;
+      }
+      this.resumeGame();
     });
 
     // Reaction Rush: Butona basma
     this.onMessage('PRESS', (client) => {
+      if (this.state.isPaused) return;
       this.handleReactionPress(client.sessionId);
     });
 
     // Quiz Arena: Şık seçme
     this.onMessage('ANSWER_QUIZ', (client, message: { optionIndex: number }) => {
+      if (this.state.isPaused) return;
       this.handleQuizAnswer(client.sessionId, message.optionIndex);
     });
 
     // Mini Football Kontrolleri
     this.onMessage('FOOTBALL_INPUT', (client, message: any) => {
+      if (this.state.isPaused) return;
       this.footballGame?.handleInput(client, message);
     });
 
     this.onMessage('FOOTBALL_SWITCH', (client) => {
+      if (this.state.isPaused) return;
       this.footballGame?.handleSwitch(client);
     });
 
@@ -148,15 +209,18 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
     });
 
     this.onMessage('SUBMIT_BLUFF', (client, message: { answer: string }) => {
+      if (this.state.isPaused) return;
       this.bluffTriviaGame?.handlePlayerSubmitBluff(client, message?.answer);
     });
 
     this.onMessage('VOTE_BLUFF', (client, message: { choiceId: string }) => {
+      if (this.state.isPaused) return;
       this.bluffTriviaGame?.handlePlayerVote(client, message?.choiceId);
     });
 
     // Mini Tetris Kontrolleri
     this.onMessage('INPUT', (client, message: any) => {
+      if (this.state.isPaused) return;
       if (this.state.activeGameId === 'mini-tetris') {
         this.miniTetrisGame?.handleInput(client.sessionId, message);
       } else if (this.state.activeGameId === 'lost-and-found') {
@@ -165,24 +229,63 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
     });
 
     this.onMessage('TETRIS_INPUT', (client, message: TetrisInput) => {
+      if (this.state.isPaused) return;
       if (this.state.activeGameId !== 'mini-tetris') return;
       this.miniTetrisGame?.handleInput(client.sessionId, message);
     });
 
     // Lost & Found Kontrolleri
     this.onMessage('LOST_AND_FOUND_INPUT', (client, message: LostAndFoundInput) => {
+      if (this.state.isPaused) return;
       if (this.state.activeGameId !== 'lost-and-found') return;
       this.lostAndFoundGame?.handleInput(client.sessionId, message);
     });
 
     // RC Rush Kontrolleri
     this.onMessage('RC_RUSH_INPUT', (client, message: RcRushInput) => {
+      if (this.state.isPaused) return;
       if (this.state.activeGameId !== 'rc-rush') return;
       this.rcRushGame?.handleInput(client.sessionId, message);
     });
 
-    // Lobiye geri dönme
-    this.onMessage('RETURN_TO_LOBBY', () => {
+    // Transfer Showdown Kontrolleri (Açık Artırma, Taktik, Maç)
+    this.onMessage('SHOWDOWN_BID', (client, message: BidAction) => {
+      if (this.state.isPaused) return;
+      if (this.state.activeGameId !== 'transfer-showdown') return;
+      this.transferShowdownGame?.handleBid(client.sessionId, message);
+    });
+
+    this.onMessage('SHOWDOWN_PICK_CARD', (client, message: { cardId: string }) => {
+      if (this.state.isPaused) return;
+      if (this.state.activeGameId !== 'transfer-showdown') return;
+      this.transferShowdownGame?.handlePickCard(client.sessionId, message.cardId);
+    });
+
+    this.onMessage('SHOWDOWN_TACTICS', (client, message: TacticsSubmission) => {
+      if (this.state.isPaused) return;
+      if (this.state.activeGameId !== 'transfer-showdown') return;
+      this.transferShowdownGame?.handleTacticsSubmission(client.sessionId, message);
+    });
+
+    this.onMessage('SHOWDOWN_HALFTIME', (client, message: Partial<ManagerTactics>) => {
+      if (this.state.isPaused) return;
+      if (this.state.activeGameId !== 'transfer-showdown') return;
+      this.transferShowdownGame?.handleHalftimeAdjustment(client.sessionId, message);
+    });
+
+    this.onMessage('SHOWDOWN_ALL_OUT_ATTACK', (client) => {
+      if (this.state.isPaused) return;
+      if (this.state.activeGameId !== 'transfer-showdown') return;
+      this.transferShowdownGame?.handleAllOutAttack(client.sessionId);
+    });
+
+    // Lobiye geri dönme - Sadece Oda Yöneticisi veya Ekran
+    this.onMessage('RETURN_TO_LOBBY', (client) => {
+      const player = this.state.players.get(client.sessionId);
+      if (player && !player.isHost) {
+        console.log(`[LobbyRoom] ${player.nickname} host olmadığı için lobiye dönemez.`);
+        return;
+      }
       this.resetToLobby();
     });
   }
@@ -316,8 +419,28 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
     console.log(`[LobbyRoom] Quiz Arena oyunu başlatılıyor!`);
     this.state.activeGameId = 'quiz-arena';
     this.state.currentRound = 1;
-    this.state.totalRounds = 5; // 5 soruluk yarışma
     this.state.winnerNickname = '';
+
+    // Settings'ten kategori, soru sayısı ve süre ayarlarını al
+    let settings: any = {};
+    try {
+      if (this.state.stageSettings) {
+        settings = JSON.parse(this.state.stageSettings);
+      }
+    } catch (e) {}
+
+    const selectedCategories: string[] = settings.selectedCategories || [];
+    const questionCount: number = settings.questionCount || settings.totalRounds || 5;
+    const customTimeLimit: number = settings.timeLimit || 15;
+
+    // Soruları kategoriye göre filtrele ve rastgele karıştır
+    this.activeQuizQuestions = filterAndShuffleQuestions(selectedCategories, questionCount);
+    if (customTimeLimit) {
+      this.activeQuizQuestions.forEach((q) => (q.timeLimit = customTimeLimit));
+    }
+
+    this.state.totalRounds = this.activeQuizQuestions.length;
+    console.log(`[LobbyRoom] Quiz havuzu hazırlandı: ${this.activeQuizQuestions.length} soru (Kategoriler: ${selectedCategories.join(', ') || 'Tümü'})`);
 
     // Skor ve streak'leri sıfırla
     this.state.players.forEach((p: PlayerStateType) => {
@@ -336,14 +459,18 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
     this.clearTimers();
     this.state.status = 'quiz_question';
 
-    // Soruyu belirle (liste içinden round indeksine göre)
-    const qIndex = (this.state.currentRound - 1) % QUIZ_QUESTIONS.length;
-    this.currentQuizQuestion = QUIZ_QUESTIONS[qIndex];
+    // Soruyu belirle (karıştırılmış soru listesi içinden round indeksine göre)
+    const qIndex = this.state.currentRound - 1;
+    this.currentQuizQuestion = this.activeQuizQuestions[qIndex] || this.activeQuizQuestions[0];
+    if (!this.currentQuizQuestion) {
+      this.endGame();
+      return;
+    }
     this.questionStartTime = Date.now();
 
     // Şemayı güncelle
     this.state.quizQuestion = this.currentQuizQuestion.question;
-    this.state.quizCategory = this.currentQuizQuestion.category;
+    this.state.quizCategory = this.currentQuizQuestion.categoryLabel || this.currentQuizQuestion.category;
     this.state.quizOptionA = this.currentQuizQuestion.options[0];
     this.state.quizOptionB = this.currentQuizQuestion.options[1];
     this.state.quizOptionC = this.currentQuizQuestion.options[2];
@@ -358,7 +485,7 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
       p.hasPressed = false;
     });
 
-    console.log(`[LobbyRoom] Quiz Round ${this.state.currentRound}: "${this.currentQuizQuestion.question}"`);
+    console.log(`[LobbyRoom] Quiz Round ${this.state.currentRound}: "${this.currentQuizQuestion.question}" (${this.state.quizCategory})`);
 
     // Saniye sayacı
     this.quizInterval = setInterval(() => {
@@ -608,8 +735,137 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
   }
 
   // ═══════════════════════════════════════════════════════════
-  // ORTAK METOTLAR: OYUN SONU VE LOBİ
+  // OYUN 8: TRANSFER SHOWDOWN (AÇIK ARTIRMA MENAJERLİK & MAÇ)
   // ═══════════════════════════════════════════════════════════
+
+  private startTransferShowdownGame() {
+    console.log(`[LobbyRoom] Transfer Showdown oyunu başlatılıyor!`);
+    this.clearTimers();
+    this.state.activeGameId = 'transfer-showdown';
+    this.state.status = 'showdown_playing';
+    this.state.winnerNickname = '';
+
+    this.transferShowdownGame = new TransferShowdownGame(this);
+    this.transferShowdownGame.init();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // ORTAK METOTLAR: OYUN STAGING, PAUSE, OYUN SONU VE LOBİ
+  // ═══════════════════════════════════════════════════════════
+
+  private stopAllActiveGames() {
+    this.clearTimers();
+    this.footballGame?.stop();
+    this.bluffTriviaGame?.stop();
+    this.miniTetrisGame?.stop();
+    this.miniTetrisGame = undefined;
+    this.lostAndFoundGame?.stop();
+    this.lostAndFoundGame = undefined;
+    this.rcRushGame?.stop();
+    this.rcRushGame = undefined;
+    this.transferShowdownGame?.destroy();
+    this.transferShowdownGame = undefined;
+  }
+
+  private enterGameStaging(gameId: string) {
+    console.log(`[LobbyRoom] Oyun staging (hazırlık) moduna geçiliyor: ${gameId}`);
+    this.stopAllActiveGames();
+    this.state.status = 'game_staging';
+    this.state.selectedGameId = gameId;
+    this.state.activeGameId = gameId;
+    this.state.isPaused = false;
+    this.state.pauseReason = '';
+
+    const defaultSettings: Record<string, any> = {
+      'reaction-rush': { totalRounds: 3, difficulty: 'normal' },
+      'quiz-arena': {
+        questionCount: 5,
+        timeLimit: 15,
+        selectedCategories: ['bilim', 'tarih', 'cografya', 'sinema', 'oyun', 'spor', 'genel']
+      },
+      'mini-football': { matchDuration: 90, ballSpeed: 'normal' },
+      'bluff-trivia': { totalRounds: 3, bluffTime: 25 },
+      'mini-tetris': { speed: 'normal', mode: 'battle' },
+      'lost-and-found': { roundTime: 45, totalRounds: 3 },
+      'rc-rush': { totalLaps: 3, speedClass: 'fast', powerUps: true },
+      'transfer-showdown': { budget: 100, squadSize: 11, matchLength: 'fast' }
+    };
+
+    this.state.stageSettings = JSON.stringify(defaultSettings[gameId] || {});
+
+    this.state.players.forEach((p: PlayerStateType) => {
+      p.isReady = false;
+      p.score = 0;
+      p.rank = 0;
+    });
+  }
+
+  private launchCurrentMatch() {
+    const gameId = this.state.selectedGameId || this.state.activeGameId || 'reaction-rush';
+    console.log(`[LobbyRoom] Maç fiilen başlatılıyor: ${gameId}`);
+    this.state.isPaused = false;
+    this.state.pauseReason = '';
+
+    let settings: any = {};
+    try {
+      if (this.state.stageSettings) {
+        settings = JSON.parse(this.state.stageSettings);
+      }
+    } catch (e) {
+      settings = {};
+    }
+
+    switch (gameId) {
+      case 'reaction-rush':
+        if (settings.totalRounds) this.state.totalRounds = settings.totalRounds;
+        this.startReactionRushGame();
+        break;
+      case 'quiz-arena':
+        if (settings.questionCount) this.state.totalRounds = settings.questionCount;
+        this.startQuizGame();
+        break;
+      case 'mini-football':
+        this.startFootballGame();
+        break;
+      case 'bluff-trivia':
+        this.startBluffTriviaGame();
+        break;
+      case 'mini-tetris':
+        this.startMiniTetrisGame();
+        break;
+      case 'lost-and-found':
+        this.startLostAndFoundGame();
+        break;
+      case 'rc-rush':
+        this.startRcRushGame();
+        break;
+      case 'transfer-showdown':
+        this.startTransferShowdownGame();
+        break;
+      default:
+        this.startReactionRushGame();
+        break;
+    }
+  }
+
+  private pauseGame() {
+    if (this.state.status === 'lobby' || this.state.status === 'game_over') return;
+    this.state.isPaused = true;
+    this.state.pauseReason = 'Oda yöneticisi oyunu duraklattı.';
+    console.log(`[LobbyRoom] Oyun duraklatıldı (Host).`);
+  }
+
+  private resumeGame() {
+    this.state.isPaused = false;
+    this.state.pauseReason = '';
+    console.log(`[LobbyRoom] Oyun devam ettirildi (Host).`);
+  }
+
+  private switchGameFromPause(newGameId: string) {
+    console.log(`[LobbyRoom] Duraklatma / Staging esnasında oyun değiştirildi: ${newGameId}`);
+    this.state.stageSettings = '';
+    this.enterGameStaging(newGameId);
+  }
 
   private endGame() {
     this.clearTimers();
@@ -634,15 +890,10 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
   }
 
   private resetToLobby() {
-    this.clearTimers();
-    this.footballGame?.stop();
-    this.bluffTriviaGame?.stop();
-    this.miniTetrisGame?.stop();
-    this.miniTetrisGame = undefined;
-    this.lostAndFoundGame?.stop();
-    this.lostAndFoundGame = undefined;
-    this.rcRushGame?.stop();
-    this.rcRushGame = undefined;
+    this.stopAllActiveGames();
+    this.state.isPaused = false;
+    this.state.pauseReason = '';
+    this.state.stageSettings = '';
     this.state.status = 'lobby';
     this.state.activeGameId = '';
     this.state.currentRound = 0;
@@ -706,6 +957,12 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
       player.team = '';
       player.controlledPlayerId = '';
 
+      const defaultColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+      const defaultCostumes = ['standard', 'retro_racer', 'cyber_neon', 'stealth_shadow', 'golden_legend', 'toxic_surge'];
+      const playerIndex = this.state.players.size;
+      player.color = options.color || defaultColors[playerIndex % defaultColors.length];
+      player.costume = options.costume || defaultCostumes[playerIndex % defaultCostumes.length];
+
       let hostExists = false;
       this.state.players.forEach((p: PlayerStateType) => {
         if (p.isHost && p.isConnected) hostExists = true;
@@ -723,6 +980,7 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
     this.footballGame?.handlePlayerLeave(client);
     this.miniTetrisGame?.removePlayer(client.sessionId);
     this.lostAndFoundGame?.removePlayer(client.sessionId);
+    this.rcRushGame?.removePlayer(client.sessionId);
     const player = this.state.players.get(client.sessionId);
     if (player) {
       player.isConnected = false;
@@ -762,6 +1020,10 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
     this.miniTetrisGame = undefined;
     this.lostAndFoundGame?.stop();
     this.lostAndFoundGame = undefined;
+    this.rcRushGame?.stop();
+    this.rcRushGame = undefined;
+    this.transferShowdownGame?.destroy();
+    this.transferShowdownGame = undefined;
     console.log(`[LobbyRoom] Oda kapatıldı: ${this.roomId}`);
   }
 }

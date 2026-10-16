@@ -50,7 +50,8 @@ export class MatchManager {
       this.controllerSystem,
       this.passingSystem,
       this.possessionSystem,
-      this.matchState.ball
+      this.matchState.ball,
+      this.playersMap
     );
 
     this.aiManager = new AIManager(

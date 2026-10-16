@@ -1,0 +1,166 @@
+const fs = require('fs');
+const path = require('path');
+
+const playerPhotoMap = {
+  // GK
+  'gk-yashin': 'https://r2.thesportsdb.com/images/media/player/cutout/58123281.png',
+  'gk-buffon': 'https://media.api-sports.io/football/players/1628.png',
+  'gk-casillas': 'https://media.api-sports.io/football/players/688.png',
+  'gk-neuer': 'https://media.api-sports.io/football/players/502.png',
+  'gk-courtois': 'https://media.api-sports.io/football/players/733.png',
+  'gk-alisson': 'https://media.api-sports.io/football/players/280.png',
+  'gk-ter-stegen': 'https://media.api-sports.io/football/players/127.png',
+  'gk-oblak': 'https://media.api-sports.io/football/players/58.png',
+  'gk-donnarumma': 'https://media.api-sports.io/football/players/1635.png',
+  'gk-ederson': 'https://media.api-sports.io/football/players/627.png',
+  'gk-maignan': 'https://media.api-sports.io/football/players/2199.png',
+  'gk-martinez': 'https://media.api-sports.io/football/players/2864.png',
+  'gk-sommer': 'https://media.api-sports.io/football/players/671.png',
+  'gk-kobel': 'https://media.api-sports.io/football/players/2582.png',
+  'gk-raya': 'https://media.api-sports.io/football/players/19088.png',
+  'gk-simon': 'https://media.api-sports.io/football/players/1884.png',
+  'gk-vicario': 'https://media.api-sports.io/football/players/30776.png',
+  'gk-muslera': 'https://media.api-sports.io/football/players/410.png',
+  'gk-livakovic': 'https://media.api-sports.io/football/players/1029.png',
+  'gk-pickford': 'https://media.api-sports.io/football/players/2932.png',
+  'gk-ugurcan': 'https://media.api-sports.io/football/players/1004.png',
+  'gk-mert': 'https://media.api-sports.io/football/players/1001.png',
+  'gk-lunin': 'https://media.api-sports.io/football/players/735.png',
+  'gk-altay': 'https://media.api-sports.io/football/players/998.png',
+  'gk-berke': 'https://media.api-sports.io/football/players/25263.png',
+  'gk-gunay': 'https://media.api-sports.io/football/players/1000.png',
+  'gk-ersin': 'https://media.api-sports.io/football/players/1003.png',
+  'gk-dogan': 'https://media.api-sports.io/football/players/147043.png',
+  'gk-bilal': 'https://media.api-sports.io/football/players/114972.png',
+  'gk-ertugrul': 'https://media.api-sports.io/football/players/1015.png',
+
+  // DEF
+  'def-maldini': 'https://r2.thesportsdb.com/images/media/player/cutout/05561141.png',
+  'def-beckenbauer': 'https://r2.thesportsdb.com/images/media/player/cutout/00561142.png',
+  'def-roberto-carlos': 'https://media.api-sports.io/football/players/19616.png',
+  'def-cafu': 'https://r2.thesportsdb.com/images/media/player/cutout/00561143.png',
+  'def-ramos': 'https://media.api-sports.io/football/players/758.png',
+  'def-van-dijk': 'https://media.api-sports.io/football/players/290.png',
+  'def-ruben-dias': 'https://media.api-sports.io/football/players/567.png',
+  'def-saliba': 'https://media.api-sports.io/football/players/1465.png',
+  'def-hakimi': 'https://media.api-sports.io/football/players/739.png',
+  'def-theo': 'https://media.api-sports.io/football/players/742.png',
+  'def-rudiger': 'https://media.api-sports.io/football/players/2283.png',
+  'def-marquinhos': 'https://media.api-sports.io/football/players/259.png',
+  'def-gabriel': 'https://media.api-sports.io/football/players/22221.png',
+  'def-kounde': 'https://media.api-sports.io/football/players/234.png',
+  'def-bastoni': 'https://media.api-sports.io/football/players/30813.png',
+  'def-dimarco': 'https://media.api-sports.io/football/players/30772.png',
+  'def-walker': 'https://media.api-sports.io/football/players/626.png',
+  'def-davinson': 'https://media.api-sports.io/football/players/164.png',
+  'def-ferdi': 'https://media.api-sports.io/football/players/1018.png',
+  'def-abdulkerim': 'https://media.api-sports.io/football/players/1036.png',
+  'def-merih': 'https://media.api-sports.io/football/players/2788.png',
+  'def-caglar': 'https://media.api-sports.io/football/players/18881.png',
+  'def-zeki': 'https://media.api-sports.io/football/players/2180.png',
+  'def-kaan': 'https://media.api-sports.io/football/players/25697.png',
+  'def-samet': 'https://media.api-sports.io/football/players/122119.png',
+  'def-eren-elmali': 'https://media.api-sports.io/football/players/122114.png',
+  'def-jayden': 'https://media.api-sports.io/football/players/135919.png',
+  'def-emirhan-topcu': 'https://media.api-sports.io/football/players/122143.png',
+  'def-yasin-ozcan': 'https://media.api-sports.io/football/players/381710.png',
+  'def-serdar-saatci': 'https://media.api-sports.io/football/players/122145.png',
+  'def-ravil': 'https://media.api-sports.io/football/players/122165.png',
+  'def-kazimcan': 'https://media.api-sports.io/football/players/122176.png',
+  'def-bunyamin': 'https://media.api-sports.io/football/players/122180.png',
+  'def-ahmet-oguz': 'https://media.api-sports.io/football/players/1020.png',
+  'def-ugur-ciftci': 'https://media.api-sports.io/football/players/1038.png',
+
+  // MID
+  'mid-zidane': 'https://r2.thesportsdb.com/images/media/player/cutout/00561144.png',
+  'mid-ronaldinho': 'https://r2.thesportsdb.com/images/media/player/cutout/00561145.png',
+  'mid-iniesta': 'https://media.api-sports.io/football/players/126.png',
+  'mid-xavi': 'https://r2.thesportsdb.com/images/media/player/cutout/00561146.png',
+  'mid-pirlo': 'https://r2.thesportsdb.com/images/media/player/cutout/00561147.png',
+  'mid-kdb': 'https://media.api-sports.io/football/players/629.png',
+  'mid-rodri': 'https://media.api-sports.io/football/players/44.png',
+  'mid-bellingham': 'https://media.api-sports.io/football/players/157052.png',
+  'mid-modric': 'https://media.api-sports.io/football/players/754.png',
+  'mid-valverde': 'https://media.api-sports.io/football/players/756.png',
+  'mid-odegaard': 'https://media.api-sports.io/football/players/371.png',
+  'mid-bernardo': 'https://media.api-sports.io/football/players/631.png',
+  'mid-rice': 'https://media.api-sports.io/football/players/2936.png',
+  'mid-de-jong': 'https://media.api-sports.io/football/players/538.png',
+  'mid-barella': 'https://media.api-sports.io/football/players/30773.png',
+  'mid-bruno': 'https://media.api-sports.io/football/players/1485.png',
+  'mid-camavinga': 'https://media.api-sports.io/football/players/138817.png',
+  'mid-hakan': 'https://media.api-sports.io/football/players/1638.png',
+  'mid-ilkay': 'https://media.api-sports.io/football/players/633.png',
+  'mid-mac-allister': 'https://media.api-sports.io/football/players/6716.png',
+  'mid-ismail': 'https://media.api-sports.io/football/players/122188.png',
+  'mid-torreira': 'https://media.api-sports.io/football/players/1458.png',
+  'mid-gedson': 'https://media.api-sports.io/football/players/19033.png',
+  'mid-fred': 'https://media.api-sports.io/football/players/902.png',
+  'mid-orkun': 'https://media.api-sports.io/football/players/37852.png',
+  'mid-salih-ozcan': 'https://media.api-sports.io/football/players/25838.png',
+  'mid-irfan-can': 'https://media.api-sports.io/football/players/1032.png',
+  'mid-berkan': 'https://media.api-sports.io/football/players/122201.png',
+  'mid-berat': 'https://media.api-sports.io/football/players/122205.png',
+  'mid-emirhan-ilkhan': 'https://media.api-sports.io/football/players/308154.png',
+  'mid-bartug': 'https://media.api-sports.io/football/players/122212.png',
+  'mid-demir-ege': 'https://media.api-sports.io/football/players/359288.png',
+  'mid-eyup-aydin': 'https://media.api-sports.io/football/players/335201.png',
+  'mid-efe-akman': 'https://media.api-sports.io/football/players/381715.png',
+  'mid-mehmet-ozcan': 'https://media.api-sports.io/football/players/122219.png',
+
+  // FWD
+  'fwd-pele': 'https://r2.thesportsdb.com/images/media/player/cutout/00561148.png',
+  'fwd-messi-icon': 'https://media.api-sports.io/football/players/154.png',
+  'fwd-cr7-icon': 'https://media.api-sports.io/football/players/874.png',
+  'fwd-r9': 'https://r2.thesportsdb.com/images/media/player/cutout/00561149.png',
+  'fwd-henry': 'https://r2.thesportsdb.com/images/media/player/cutout/00561150.png',
+  'fwd-mbappe': 'https://media.api-sports.io/football/players/278.png',
+  'fwd-haaland': 'https://media.api-sports.io/football/players/1100.png',
+  'fwd-kane': 'https://media.api-sports.io/football/players/184.png',
+  'fwd-salah': 'https://media.api-sports.io/football/players/306.png',
+  'fwd-vinicius': 'https://media.api-sports.io/football/players/50.png',
+  'fwd-lewandowski': 'https://media.api-sports.io/football/players/521.png',
+  'fwd-lautaro': 'https://media.api-sports.io/football/players/1907.png',
+  'fwd-griezmann': 'https://media.api-sports.io/football/players/129.png',
+  'fwd-saka': 'https://media.api-sports.io/football/players/1467.png',
+  'fwd-foden': 'https://media.api-sports.io/football/players/635.png',
+  'fwd-son': 'https://media.api-sports.io/football/players/186.png',
+  'fwd-osimhen': 'https://media.api-sports.io/football/players/7036.png',
+  'fwd-rodrygo': 'https://media.api-sports.io/football/players/762.png',
+  'fwd-kvara': 'https://media.api-sports.io/football/players/51543.png',
+  'fwd-leao': 'https://media.api-sports.io/football/players/2197.png',
+  'fwd-icardi': 'https://media.api-sports.io/football/players/85.png',
+  'fwd-dzeko': 'https://media.api-sports.io/football/players/770.png',
+  'fwd-immobile': 'https://media.api-sports.io/football/players/30813.png',
+  'fwd-vlahovic': 'https://media.api-sports.io/football/players/30822.png',
+  'fwd-kerem': 'https://media.api-sports.io/football/players/138814.png',
+  'fwd-baris-alper': 'https://media.api-sports.io/football/players/162985.png',
+  'fwd-semih': 'https://media.api-sports.io/football/players/359283.png',
+  'fwd-kenan': 'https://media.api-sports.io/football/players/335198.png',
+  'fwd-en-nesyri': 'https://media.api-sports.io/football/players/1447.png',
+  'fwd-cenk-tosun': 'https://media.api-sports.io/football/players/1043.png',
+  'fwd-can-uzun': 'https://media.api-sports.io/football/players/359301.png',
+  'fwd-eren-dinkci': 'https://media.api-sports.io/football/players/162990.png',
+  'fwd-bertug': 'https://media.api-sports.io/football/players/284192.png',
+  'fwd-enis-destan': 'https://media.api-sports.io/football/players/162995.png',
+  'fwd-mustafa-erhan': 'https://media.api-sports.io/football/players/410001.png'
+};
+
+const filePath = path.join(__dirname, '../games/transfer-showdown/shared/player-database.ts');
+let dbContent = fs.readFileSync(filePath, 'utf8');
+
+let count = 0;
+for (const [id, url] of Object.entries(playerPhotoMap)) {
+  const targetPattern = new RegExp(`(id:\\s*'${id}',[\\s\\S]*?)(accentColor:)`);
+  if (targetPattern.test(dbContent)) {
+    // Check if photoUrl is already there for this player
+    const match = dbContent.match(targetPattern);
+    if (match && !match[1].includes('photoUrl:')) {
+      dbContent = dbContent.replace(targetPattern, `$1photoUrl: '${url}',\n    $2`);
+      count++;
+    }
+  }
+}
+
+fs.writeFileSync(filePath, dbContent, 'utf8');
+console.log(`Updated ${count} players with photoUrl in player-database.ts`);

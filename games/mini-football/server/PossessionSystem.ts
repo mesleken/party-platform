@@ -52,8 +52,10 @@ export class PossessionSystem {
       const dz = this.ball.z - player.z;
       const distSq = dx * dx + dz * dz;
 
-      // Ball must not be too high in air to be claimed
-      if (this.ball.y < 2.0 && distSq < closestDistSq) {
+      // Goalkeeper can catch balls up to goal height inside their zone
+      const maxY = player.isGoalkeeper ? PITCH_CONFIG.goalHeight : 2.2;
+
+      if (this.ball.y <= maxY && distSq < closestDistSq) {
         closestDistSq = distSq;
         closestCandidate = player;
       }
@@ -62,14 +64,17 @@ export class PossessionSystem {
     if (!closestCandidate) return;
 
     const dist = Math.sqrt(closestDistSq);
+    const reach = closestCandidate.isGoalkeeper
+      ? 2.8 // Goalkeepers have extended dive and catch reach
+      : PHYSICS_CONFIG.possessionDribbleOffset + 0.35;
 
     // Zone 3: Full possession
-    if (dist <= PHYSICS_CONFIG.possessionDribbleOffset + 0.35) {
+    if (dist <= reach) {
       this.takePossession(closestCandidate);
     } 
     // Zone 2: Soft attraction (nudge towards player)
-    else if (dist <= PHYSICS_CONFIG.possessionAttractRadius) {
-      const pullSpeed = 4.0;
+    else if (dist <= (closestCandidate.isGoalkeeper ? 4.5 : PHYSICS_CONFIG.possessionAttractRadius)) {
+      const pullSpeed = closestCandidate.isGoalkeeper ? 6.0 : 4.0;
       const dirX = (closestCandidate.x - this.ball.x) / dist;
       const dirZ = (closestCandidate.z - this.ball.z) / dist;
 

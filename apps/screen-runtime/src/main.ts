@@ -4,16 +4,127 @@ import { FootballRenderer3D } from './FootballRenderer3D';
 import { TetrisRenderer } from './TetrisRenderer';
 import { LostAndFoundRenderer3D } from './LostAndFoundRenderer3D';
 import { RcRushRenderer3D } from './RcRushRenderer3D';
+import { FootballManager2DMatchEngine } from './FootballManager2DMatchEngine';
 import { TRACK_WAYPOINTS, getNormalizedMiniMapCoords } from '@games/rc-rush';
+
+interface GameStagingInfo {
+  icon: string;
+  title: string;
+  tagline: string;
+  tutorials: { num: number; title: string; desc: string }[];
+  defaultSettingsSummary: string;
+}
+
+const GAME_STAGING_DATA: Record<string, GameStagingInfo> = {
+  'reaction-rush': {
+    icon: '⚡',
+    title: 'REACTION RUSH',
+    tagline: 'Saf Refleks & Hızlı Parmaklar • 3 Roundluk Adrenalin',
+    tutorials: [
+      { num: 1, title: 'Kırmızı Işığa Dikkat Et', desc: 'Ekran kırmızı olduğunda kesinlikle basma! Erken basan faul alır (-40 puan).' },
+      { num: 2, title: 'Yeşil Yanınca Bas', desc: 'Yeşil yandığı mikrosaniyede telefonundaki dev butona en hızlı basan en çok puanı kapar!' },
+      { num: 3, title: '3 Round Zirvede Kal', desc: 'Her round puanlar katlanır, son ana kadar yarış devam eder!' }
+    ],
+    defaultSettingsSummary: '🎯 3 Round | ⚡ Standart Hız | ⚠️ Faul Cezası: -40 Puan'
+  },
+  'quiz-arena': {
+    icon: '🧠',
+    title: 'QUIZ ARENA',
+    tagline: 'Bilgi Savaşı & Hızlı Cevap • Serini Koru!',
+    tutorials: [
+      { num: 1, title: 'Soruyu Dev Ekranda Oku', desc: 'Her soru için 15 saniye süre verilir. Soruyu dikkatle oku.' },
+      { num: 2, title: 'Telefonda Şıkkını Seç', desc: 'Telefonundaki 4 renkli şık arasından doğru cevaba tıkla.' },
+      { num: 3, title: 'Streak (Seri) Bonusu Kap', desc: 'Arka arkaya doğru bildikçe ek kombo çarpanı kazanırsın!' }
+    ],
+    defaultSettingsSummary: '⏱️ Soru Başına 15sn | 📚 5 Soru | 🔥 Streak Çarpanı Aktif'
+  },
+  'mini-football': {
+    icon: '⚽',
+    title: 'MINI FOOTBALL',
+    tagline: 'Miniclip Tarzı 3D Chibi Arcade Futbol • Joystick, Pas, Şut & Kayma',
+    tutorials: [
+      { num: 1, title: 'Sol Başparmak: Joystick', desc: 'Sanal joystick ile oyuncunu yönlendir ve sahada pozisyon al.' },
+      { num: 2, title: 'Pas, Şut ve Kayma', desc: 'Top sendeyken PAS ve ŞUT butonları, rakipten alırken KAYARAK MÜDAHALE yap.' },
+      { num: 3, title: 'Hızlı Oyuncu Değişimi', desc: 'DEĞİŞTİR butonu ile topa en yakın serbest oyuncuya anında geç!' }
+    ],
+    defaultSettingsSummary: '⏱️ 90sn Maç | 🏟️ Mini Football Stadyumu | ⚽ Telstar 3D Top'
+  },
+  'bluff-trivia': {
+    icon: '🎭',
+    title: 'BLUFF TRIVIA',
+    tagline: 'Blöf Yap, Rakiplerini Kandır, Doğruyu Bul!',
+    tutorials: [
+      { num: 1, title: 'İnandırıcı Bir Yalan Yaz', desc: 'Garip gerçeğe kimsenin inanmayacağı zekice bir sahte cevap uydur.' },
+      { num: 2, title: 'Gerçek Cevabı Tahmin Et', desc: 'Tüm oyuncuların cevapları ve gerçek cevap listelenir. Doğruyu bul!' },
+      { num: 3, title: 'Rakipleri Kandırınca +Puan', desc: 'Senin yalanına inanan her rakip için sen ekstra puan kazanırsın!' }
+    ],
+    defaultSettingsSummary: '🎭 3 Round | ⏳ 25sn Blöf Süresi | 💡 Arkadaş Modu Destekli'
+  },
+  'mini-tetris': {
+    icon: '🧱',
+    title: 'MINI TETRIS',
+    tagline: 'Battle Royale Tetris • Satır Temizle, Rakibe Çöp Gönder!',
+    tutorials: [
+      { num: 1, title: 'D-Pad ile Blokları Yönet', desc: 'Sol/Sağ ile hareket ettir, Döndür ile çevir, Hızlı Düşür ile kilitle.' },
+      { num: 2, title: 'Çoklu Satır Temizle', desc: '2 veya daha fazla satır temizlediğinde diğer oyuncuların tahtasına çöp blok gider!' },
+      { num: 3, title: 'Son Ayakta Kalan Kazanır', desc: 'Tavanı aşan elenir. En uzun süre hayatta kalan tahtı alır!' }
+    ],
+    defaultSettingsSummary: '⚔️ Battle Royale Modu | 🧱 Hızlı Çöp Gönderimi | ⚡ Artan Hız'
+  },
+  'lost-and-found': {
+    icon: '🧸',
+    title: 'LOST & FOUND',
+    tagline: 'It Takes Two Tarzı 2 Kişilik Ortak Macera • Mıknatıs, Kanca & Kasa',
+    tutorials: [
+      { num: 1, title: 'Milo (Mıknatıs) & Nia (Kanca)', desc: 'Oyuncu 1 metal nesneleri iter/çeker, Oyuncu 2 makaralı kanca ile yüksek yerlere tutunur.' },
+      { num: 2, title: 'Baskı Plakaları & Lazerler', desc: 'Birlikte hareket edin. Biriniz düğmeye basarken diğeri açılan kapıdan geçmeli.' },
+      { num: 3, title: 'Kasa Açma Eşleşmesi', desc: 'Son aşamada iki oyuncu da telefonlarındaki frekans ve fazı senkronize ederek kasayı açar!' }
+    ],
+    defaultSettingsSummary: '🤝 2 Kişilik Co-Op | ⏱️ Seviye Süresi: 60sn | 🗝️ Bulmaca Odası 1'
+  },
+  'rc-rush': {
+    icon: '🏎️',
+    title: 'RC RUSH',
+    tagline: 'Re-Volt Ruhu • Dev Masaüstü & Oyuncak Odası 3D Arcade Yarış',
+    tutorials: [
+      { num: 1, title: 'Gaz & Analog Direksiyon', desc: 'Hassas arcade kontrolleriyle keskin virajları dön, rampalardan zıpla.' },
+      { num: 2, title: 'Alevli Nitro Turbo', desc: 'Düzlüklerde ve rakipleri sollarken NİTRO butonuna basarak maksimum hıza ulaş.' },
+      { num: 3, title: 'Gizemli Güç Kutuları', desc: 'Pistteki dönen kutulardan Roket, Yağ Birikintisi veya Kalkan kazanıp rakiplerini avla!' }
+    ],
+    defaultSettingsSummary: '🏁 3 Tur Yarış | ⚡ Süper Hız Sınıfı | 🚀 Güç Kutuları Açık'
+  },
+  'transfer-showdown': {
+    icon: '⚽',
+    title: 'TRANSFER SHOWDOWN',
+    tagline: 'Açık Artırma Menajerlik & 3D Canlı Maç Düellosu • 100 Kredi, Taktik ve 90 Dakika',
+    tutorials: [
+      { num: 1, title: 'Açık Artırmayı Yönet', desc: '100 krediyle 11 kişilik kadro kur. Bütçe korumasına ve mevki kotalarına dikkat et.' },
+      { num: 2, title: 'Diziliş ve Oyun Stili', desc: '4-3-3, 4-4-2 gibi dizilişlerle oyuncu mevkilerini eşle, oyun tarzınla rakibe üstünlük sağla.' },
+      { num: 3, title: '3D Maçı İzle & Müdahale Et', desc: 'Dev ekranda kritik pozisyonları izle, devrede taktiğini değiştir, son 15 dakika tüm hatlarınla saldır!' }
+    ],
+    defaultSettingsSummary: '💰 100 Kredi Bütçe | ⏱️ Hızlı Maç | 🏆 11 Futbolcu'
+  }
+};
+
+const COSTUME_LABELS: Record<string, string> = {
+  standard: '🏎️ Standart',
+  retro_racer: '🕹️ Retro 90s',
+  cyber_neon: '⚡ Cyber Neon',
+  stealth_shadow: '🥷 Gizli Gölge',
+  golden_legend: '🏆 Altın Efsane',
+  toxic_surge: '☣️ Zehirli Fırtına'
+};
 
 async function bootstrap() {
   const statusView = document.getElementById('status-view')!;
   const lobbyView = document.getElementById('lobby-view')!;
+  const stagingView = document.getElementById('staging-view')!;
   const gameView = document.getElementById('game-view')!;
   const quizView = document.getElementById('quiz-view')!;
   const footballView = document.getElementById('football-view')!;
   const lostAndFoundView = document.getElementById('lost-and-found-view')!;
   const rcRushView = document.getElementById('rc-rush-view')!;
+  const showdownView = document.getElementById('showdown-view')!;
   const resultView = document.getElementById('result-view')!;
   const gameoverView = document.getElementById('gameover-view')!;
 
@@ -25,6 +136,23 @@ async function bootstrap() {
   const startGameBtn = document.getElementById('start-game-btn')!;
   const returnLobbyBtn = document.getElementById('return-lobby-btn')!;
 
+  // Staging Elements
+  const stagingGameIcon = document.getElementById('staging-game-icon')!;
+  const stagingGameTitle = document.getElementById('staging-game-title')!;
+  const stagingGameTagline = document.getElementById('staging-game-tagline')!;
+  const stagingTutorialCards = document.getElementById('staging-tutorial-cards')!;
+  const stagingSettingsBadge = document.getElementById('staging-settings-badge')!;
+  const stagingPlayersGrid = document.getElementById('staging-players-grid')!;
+  const stagingLaunchBtn = document.getElementById('staging-launch-btn')!;
+  const stagingLobbyBtn = document.getElementById('staging-lobby-btn')!;
+
+  // Pause Elements
+  const pauseOverlay = document.getElementById('pause-overlay')!;
+  const pauseReasonText = document.getElementById('pause-reason-text')!;
+  const pauseResumeBtn = document.getElementById('pause-resume-btn')!;
+  const pauseSwitchBtn = document.getElementById('pause-switch-btn')!;
+  const pauseLobbyBtn = document.getElementById('pause-lobby-btn')!;
+
   // Game Selector Cards
   const cardReactionRush = document.getElementById('card-reaction-rush')!;
   const cardQuizArena = document.getElementById('card-quiz-arena')!;
@@ -33,6 +161,7 @@ async function bootstrap() {
   const cardMiniTetris = document.getElementById('card-mini-tetris')!;
   const cardLostAndFound = document.getElementById('card-lost-and-found')!;
   const cardRcRush = document.getElementById('card-rc-rush')!;
+  const cardTransferShowdown = document.getElementById('card-transfer-showdown')!;
 
   // RC Rush Elements
   const rcRushCanvasContainer = document.getElementById('rc-rush-canvas-container')!;
@@ -186,6 +315,70 @@ async function bootstrap() {
   const tetrisPhaseIndicator = document.getElementById('tetris-phase-indicator')!;
   let tetrisRenderer: TetrisRenderer | null = null;
 
+  // Transfer Showdown Elements & Renderer
+  const showdownCanvasContainer = document.getElementById('showdown-canvas-container')!;
+  const showdownAuctionOverlay = document.getElementById('showdown-auction-overlay')!;
+  const showdownTacticsOverlay = document.getElementById('showdown-tactics-overlay')!;
+  const showdownMatchOverlay = document.getElementById('showdown-match-overlay')!;
+  const showdownAnalysisOverlay = document.getElementById('showdown-analysis-overlay')!;
+
+  const showdownLotCounter = document.getElementById('showdown-lot-counter')!;
+  const showdownAuctionTimer = document.getElementById('showdown-auction-timer')!;
+  const showdownAuctionBid = document.getElementById('showdown-auction-bid')!;
+  const showdownAuctionBidder = document.getElementById('showdown-auction-bidder')!;
+
+  const showdownBenchAvatar0 = document.getElementById('showdown-bench-avatar-0')!;
+  const showdownBenchName0 = document.getElementById('showdown-bench-name-0')!;
+  const showdownBenchBudget0 = document.getElementById('showdown-bench-budget-0')!;
+  const showdownBenchRoster0 = document.getElementById('showdown-bench-roster-0')!;
+  const showdownBenchStatus0 = document.getElementById('showdown-bench-status-0')!;
+
+  const showdownBenchAvatar1 = document.getElementById('showdown-bench-avatar-1')!;
+  const showdownBenchName1 = document.getElementById('showdown-bench-name-1')!;
+  const showdownBenchBudget1 = document.getElementById('showdown-bench-budget-1')!;
+  const showdownBenchRoster1 = document.getElementById('showdown-bench-roster-1')!;
+  const showdownBenchStatus1 = document.getElementById('showdown-bench-status-1')!;
+
+  const showdownPackTier = document.getElementById('showdown-pack-tier');
+  const showdownPackName = document.getElementById('showdown-pack-name')!;
+  const showdownPackOpening = document.getElementById('showdown-pack-opening')!;
+  const showdownDraftBanner = document.getElementById('showdown-draft-banner')!;
+  const showdownTurnStarterBadge = document.getElementById('showdown-turn-starter-badge');
+  const showdownBenchQuotas0 = document.getElementById('showdown-bench-quotas-0');
+  const showdownBenchQuotas1 = document.getElementById('showdown-bench-quotas-1');
+  const showdownFmPosText0 = document.getElementById('showdown-fm-pos-text-0');
+  const showdownFmPosText1 = document.getElementById('showdown-fm-pos-text-1');
+  const showdownFmPosBar0 = document.getElementById('showdown-fm-pos-bar-0');
+  const showdownFmPosBar1 = document.getElementById('showdown-fm-pos-bar-1');
+  const showdownFmXg0 = document.getElementById('showdown-fm-xg-0');
+  const showdownFmXg1 = document.getElementById('showdown-fm-xg-1');
+
+  const showdownTacticsTimer = document.getElementById('showdown-tactics-timer')!;
+  const showdownTacticsName0 = document.getElementById('showdown-tactics-name-0')!;
+  const showdownTacticsForm0 = document.getElementById('showdown-tactics-form-0')!;
+  const showdownTacticsSynergy0 = document.getElementById('showdown-tactics-synergy-0')!;
+  const showdownTacticsName1 = document.getElementById('showdown-tactics-name-1')!;
+  const showdownTacticsForm1 = document.getElementById('showdown-tactics-form-1')!;
+  const showdownTacticsSynergy1 = document.getElementById('showdown-tactics-synergy-1')!;
+
+  const showdownScoreTeam0 = document.getElementById('showdown-score-team-0')!;
+  const showdownScoreNum0 = document.getElementById('showdown-score-num-0')!;
+  const showdownScoreTeam1 = document.getElementById('showdown-score-team-1')!;
+  const showdownScoreNum1 = document.getElementById('showdown-score-num-1')!;
+  const showdownMatchMinute = document.getElementById('showdown-match-minute')!;
+  const showdownCommentaryTitle = document.getElementById('showdown-commentary-title')!;
+  const showdownCommentarySub = document.getElementById('showdown-commentary-sub')!;
+  const showdownEventBadge = document.getElementById('showdown-event-badge')!;
+
+  const showdownFinalWinnerTitle = document.getElementById('showdown-final-winner-title')!;
+  const showdownFinalScoreText = document.getElementById('showdown-final-score-text')!;
+  const showdownAnalysisStatsTable = document.getElementById('showdown-analysis-stats-table')!;
+  const showdownMvpName = document.getElementById('showdown-mvp-name')!;
+  const showdownMvpRating = document.getElementById('showdown-mvp-rating')!;
+  const showdownMvpDesc = document.getElementById('showdown-mvp-desc')!;
+
+  let showdownRenderer: FootballManager2DMatchEngine | null = null;
+
   // Result & Game Over Elements
   const resultTitle = document.getElementById('result-title')!;
   const resultScoreList = document.getElementById('result-score-list')!;
@@ -241,6 +434,10 @@ async function bootstrap() {
       sdk.selectGame('rc-rush');
     };
 
+    cardTransferShowdown.onclick = () => {
+      sdk.selectGame('transfer-showdown');
+    };
+
     // Buton Eylemleri
     startGameBtn.onclick = () => {
       sdk.startGame();
@@ -250,11 +447,39 @@ async function bootstrap() {
       sdk.returnToLobby();
     };
 
+    stagingLaunchBtn.onclick = () => {
+      sdk.launchMatch();
+    };
+
+    stagingLobbyBtn.onclick = () => {
+      sdk.returnToLobby();
+    };
+
+    pauseResumeBtn.onclick = () => {
+      sdk.resumeGame();
+    };
+
+    pauseSwitchBtn.onclick = () => {
+      sdk.returnToLobby();
+    };
+
+    pauseLobbyBtn.onclick = () => {
+      sdk.returnToLobby();
+    };
+
     // Sunucu Durumunu Dinle
     sdk.onStateChange = (state) => {
       const status = state.status;
       const playersArray: any[] = [];
       state.players.forEach((p) => playersArray.push(p));
+
+      // Global Duraklatma (Pause) Overlay
+      pauseOverlay.style.display = state.isPaused ? 'flex' : 'none';
+      if (state.isPaused) {
+        pauseReasonText.innerText = state.pauseReason || 'Oda yöneticisi oyunu duraklattı.';
+      }
+
+      stagingView.style.display = status === 'game_staging' ? 'flex' : 'none';
 
       // ─── 1. LOBİ DURUMU ───
       if (status === 'lobby') {
@@ -274,8 +499,13 @@ async function bootstrap() {
           rcRushRenderer.dispose();
           rcRushRenderer = null;
         }
+        if (showdownRenderer) {
+          showdownRenderer.destroy();
+          showdownRenderer = null;
+        }
 
         lobbyView.style.display = 'flex';
+        stagingView.style.display = 'none';
         gameView.style.display = 'none';
         quizView.style.display = 'none';
         footballView.style.display = 'none';
@@ -283,6 +513,7 @@ async function bootstrap() {
         tetrisView.style.display = 'none';
         lostAndFoundView.style.display = 'none';
         rcRushView.style.display = 'none';
+        showdownView.style.display = 'none';
         resultView.style.display = 'none';
         gameoverView.style.display = 'none';
 
@@ -295,6 +526,7 @@ async function bootstrap() {
         cardMiniTetris.classList.toggle('selected', selected === 'mini-tetris');
         cardLostAndFound.classList.toggle('selected', selected === 'lost-and-found');
         cardRcRush.classList.toggle('selected', selected === 'rc-rush');
+        cardTransferShowdown.classList.toggle('selected', selected === 'transfer-showdown');
 
         playersList.innerHTML = '';
         playersArray.forEach((p) => {
@@ -313,6 +545,121 @@ async function bootstrap() {
         });
 
         playerCount.innerText = playersArray.length.toString();
+        return;
+      }
+
+      // ─── 1.5. OYUN İÇİ STAGING / ÖZELLEŞTİRME & TUTORIAL DURUMU ───
+      if (status === 'game_staging') {
+        if (footballRenderer) {
+          footballRenderer.dispose();
+          footballRenderer = null;
+        }
+        if (tetrisRenderer) {
+          tetrisRenderer.dispose();
+          tetrisRenderer = null;
+        }
+        if (lostAndFoundRenderer) {
+          lostAndFoundRenderer.destroy();
+          lostAndFoundRenderer = null;
+        }
+        if (rcRushRenderer) {
+          rcRushRenderer.dispose();
+          rcRushRenderer = null;
+        }
+
+        lobbyView.style.display = 'none';
+        stagingView.style.display = 'flex';
+        gameView.style.display = 'none';
+        quizView.style.display = 'none';
+        footballView.style.display = 'none';
+        bluffView.style.display = 'none';
+        tetrisView.style.display = 'none';
+        lostAndFoundView.style.display = 'none';
+        rcRushView.style.display = 'none';
+        resultView.style.display = 'none';
+        gameoverView.style.display = 'none';
+
+        const gameId = state.activeGameId || state.selectedGameId || 'reaction-rush';
+        const gameInfo = GAME_STAGING_DATA[gameId] || GAME_STAGING_DATA['reaction-rush'];
+
+        stagingGameIcon.innerText = gameInfo.icon;
+        stagingGameTitle.innerText = gameInfo.title;
+        stagingGameTagline.innerText = gameInfo.tagline;
+
+        // Tutorial Kartlarını Doldur
+        stagingTutorialCards.innerHTML = '';
+        gameInfo.tutorials.forEach((tut) => {
+          const card = document.createElement('div');
+          card.className = 'staging-card';
+          card.innerHTML = `
+            <div class="staging-card-num">${tut.num}</div>
+            <div>
+              <div class="staging-card-title">${tut.title}</div>
+              <div class="staging-card-desc">${tut.desc}</div>
+            </div>
+          `;
+          stagingTutorialCards.appendChild(card);
+        });
+
+        // Oyun Ayarları Özeti
+        let settingsSummary = gameInfo.defaultSettingsSummary;
+        try {
+          if (state.stageSettings) {
+            const parsed = JSON.parse(state.stageSettings);
+            if (gameId === 'quiz-arena') {
+              const qCount = parsed.questionCount || parsed.totalRounds || 5;
+              const tLimit = parsed.timeLimit || 15;
+              const cats: string[] = parsed.selectedCategories || [];
+              const catIcons: Record<string, string> = {
+                bilim: '🔬 Bilim',
+                tarih: '📜 Tarih',
+                cografya: '🌍 Coğrafya',
+                sinema: '🎬 Sinema',
+                oyun: '🎮 Oyun',
+                spor: '⚽ Spor',
+                genel: '💡 Genel'
+              };
+              const catNames = !cats || cats.length === 0 || cats.length === 7
+                ? '🌐 Tüm Kategoriler (7)'
+                : cats.map((c) => catIcons[c] || c).join(', ');
+              settingsSummary = `📚 ${catNames} | 🔢 ${qCount} Soru | ⏱️ ${tLimit}s`;
+            } else {
+              const pairs = Object.entries(parsed).map(([k, v]) => `${k}: ${v}`).join(' | ');
+              if (pairs) settingsSummary = pairs;
+            }
+          }
+        } catch (e) {}
+        stagingSettingsBadge.innerHTML = `
+          <span>⚙️ <strong>Oyun Ayarları:</strong> ${settingsSummary}</span>
+          <span style="color:#38bdf8; font-weight:700;">Yönetici telefondan güncelleyebilir</span>
+        `;
+
+        // Oyuncu Kartları ve Özelleştirmeleri
+        stagingPlayersGrid.innerHTML = '';
+        playersArray.forEach((p) => {
+          const card = document.createElement('div');
+          card.className = `staging-player-card ${p.isReady ? 'ready' : ''}`;
+          const hostBadge = p.isHost ? '👑 ' : '';
+          const readyBadge = p.isReady
+            ? '<span style="color:#22c55e; font-weight:800; font-size:0.85rem;">✓ HAZIR</span>'
+            : '<span style="color:#f59e0b; font-weight:700; font-size:0.85rem;">⏳ BEKLİYOR</span>';
+
+          const costumeLabel = COSTUME_LABELS[p.costume] || p.costume || 'Standart';
+          const playerColor = p.color || '#3b82f6';
+
+          card.innerHTML = `
+            <div class="staging-player-header">
+              <div class="staging-player-name">${hostBadge}${p.nickname}</div>
+              <div>${readyBadge}</div>
+            </div>
+            <div class="staging-player-tags">
+              <div class="staging-color-dot" style="background-color: ${playerColor}; box-shadow: 0 0 8px ${playerColor};"></div>
+              <div class="staging-costume-tag">${costumeLabel}</div>
+            </div>
+          `;
+          stagingPlayersGrid.appendChild(card);
+        });
+
         return;
       }
 
@@ -775,6 +1122,47 @@ async function bootstrap() {
 
         if (!rcRushRenderer) {
           rcRushRenderer = new RcRushRenderer3D(rcRushCanvasContainer);
+        }
+
+        return;
+      }
+
+      // ─── 9. TRANSFER SHOWDOWN (AÇIK ARTIRMA & 3D MAÇ) ───
+      if (
+        status === 'showdown_playing' ||
+        (state.activeGameId === 'transfer-showdown' && status !== 'game_over' && status !== 'lobby')
+      ) {
+        if (footballRenderer) {
+          footballRenderer.dispose();
+          footballRenderer = null;
+        }
+        if (tetrisRenderer) {
+          tetrisRenderer.dispose();
+          tetrisRenderer = null;
+        }
+        if (lostAndFoundRenderer) {
+          lostAndFoundRenderer.destroy();
+          lostAndFoundRenderer = null;
+        }
+        if (rcRushRenderer) {
+          rcRushRenderer.dispose();
+          rcRushRenderer = null;
+        }
+
+        lobbyView.style.display = 'none';
+        gameView.style.display = 'none';
+        quizView.style.display = 'none';
+        footballView.style.display = 'none';
+        bluffView.style.display = 'none';
+        tetrisView.style.display = 'none';
+        lostAndFoundView.style.display = 'none';
+        rcRushView.style.display = 'none';
+        resultView.style.display = 'none';
+        gameoverView.style.display = 'none';
+        showdownView.style.display = 'flex';
+
+        if (!showdownRenderer) {
+          showdownRenderer = new FootballManager2DMatchEngine(showdownCanvasContainer);
         }
 
         return;
@@ -1267,6 +1655,313 @@ async function bootstrap() {
             if (rcRushEventBanner) rcRushEventBanner.style.display = 'none';
           }, 2400);
         }
+      }
+    };
+
+    // Transfer Showdown Durum Dinleyicisi (Açık Artırma, Taktik, Maç & Analiz)
+    sdk.onShowdownState = (snap: any) => {
+      if (showdownRenderer) {
+        showdownRenderer.updateSnapshot(snap);
+      }
+
+      if (!showdownView || showdownView.style.display !== 'flex') return;
+
+      const phase = snap.phase;
+
+      // 1. AÇIK ARTIRMA (AUCTION)
+      if (phase === 'AUCTION') {
+        showdownAuctionOverlay.style.display = 'flex';
+        showdownTacticsOverlay.style.display = 'none';
+        showdownMatchOverlay.style.display = 'none';
+        showdownAnalysisOverlay.style.display = 'none';
+
+        const lot = snap.currentLot;
+        showdownLotCounter.innerText = `PAKET #${lot?.roundNumber || (snap.auctionCompletedLots + 1)}`;
+        const timeLeft = Math.ceil(lot?.timeLeft || 0);
+        showdownAuctionTimer.innerText = `${timeLeft}s`;
+        showdownAuctionTimer.style.color = timeLeft <= 3 ? '#ef4444' : '#facc15';
+
+        if (lot) {
+          if (lot.pack) {
+            showdownPackName.innerText = lot.pack.packName;
+            if (showdownPackTier) showdownPackTier.style.display = 'none';
+            showdownPackOpening.innerText = '1 Kredi';
+
+            // Drafting Banner
+            if (lot.isPickingPlayer) {
+              showdownDraftBanner.style.display = 'block';
+              showdownDraftBanner.innerText = `🎉 KAZANAN (${lot.highestBidderName || 'Menajer'}) BİR FUTBOLCU SEÇİYOR... [${Math.ceil(lot.pickingTimeLeft)}s]`;
+            } else {
+              showdownDraftBanner.style.display = 'none';
+            }
+
+            // 4 Futbolcu Kartı (Fotoğraflarla)
+            lot.pack.cards.forEach((c: any, idx: number) => {
+              const cardEl = document.getElementById(`showdown-pack-card-${idx}`);
+              const ovrEl = document.getElementById(`showdown-card-ovr-${idx}`);
+              const posEl = document.getElementById(`showdown-card-pos-${idx}`);
+              const nameEl = document.getElementById(`showdown-card-name-${idx}`);
+              const metaEl = document.getElementById(`showdown-card-meta-${idx}`);
+              const imgEl = document.getElementById(`showdown-card-img-${idx}`) as HTMLImageElement;
+
+              if (ovrEl) ovrEl.innerText = c.ovr.toString();
+              if (posEl) posEl.innerText = c.position;
+              if (nameEl) nameEl.innerText = c.name;
+              if (metaEl) metaEl.innerText = `${c.countryFlag} ${c.club}`;
+
+              if (imgEl) {
+                if (c.photoUrl) {
+                  imgEl.src = c.photoUrl;
+                  imgEl.style.display = 'block';
+                  imgEl.onerror = () => { imgEl.style.display = 'none'; };
+                } else {
+                  imgEl.style.display = 'none';
+                }
+              }
+
+              if (cardEl) {
+                if (lot.selectedCardId === c.id) {
+                  cardEl.style.borderColor = '#10b981';
+                  cardEl.style.boxShadow = '0 0 30px rgba(16, 185, 129, 0.7)';
+                  cardEl.style.transform = 'scale(1.05)';
+                  cardEl.style.opacity = '1';
+                } else if (lot.selectedCardId && lot.selectedCardId !== c.id) {
+                  cardEl.style.borderColor = '#334155';
+                  cardEl.style.boxShadow = 'none';
+                  cardEl.style.transform = 'scale(0.95)';
+                  cardEl.style.opacity = '0.35';
+                } else {
+                  cardEl.style.borderColor = '#38bdf8';
+                  cardEl.style.boxShadow = 'none';
+                  cardEl.style.transform = 'scale(1)';
+                  cardEl.style.opacity = '1';
+                }
+              }
+            });
+          }
+
+          showdownAuctionBid.innerText = `${lot.currentBid} Kredi`;
+          showdownAuctionBidder.innerText = lot.highestBidderName
+            ? `(${lot.highestBidderName})`
+            : '(Açılış Teklifi: 1 Kredi)';
+        }
+
+        // Menajer Kulübeleri
+        const managers = Object.values(snap.managers || {}) as any[];
+        const m0 = managers.find((m) => m.teamIndex === 0) || managers[0];
+        const m1 = managers.find((m) => m.teamIndex === 1) || managers[1];
+
+        if (showdownTurnStarterBadge && lot) {
+          const starterName = lot.turnStarterId === m0?.sessionId ? (m0?.nickname || 'Takım A') : (m1?.nickname || 'Takım B');
+          showdownTurnStarterBadge.innerText = `🎯 Sıra: ${starterName} (Açılış Teklifi: 1 Kredi)`;
+        }
+
+        if (m0) {
+          showdownBenchAvatar0.innerText = m0.avatar || '👔';
+          showdownBenchName0.innerText = m0.nickname || 'Menajer 1';
+          showdownBenchBudget0.innerText = `${m0.budget} Kredi`;
+          showdownBenchRoster0.innerText = `${m0.rosterCount || 0} / 11`;
+
+          if (showdownBenchQuotas0 && m0.positionCounts) {
+            showdownBenchQuotas0.innerHTML = `
+              <span style="color:${m0.positionCounts.GK === 1 ? '#10b981' : '#f59e0b'}">🧤 ${m0.positionCounts.GK}/1</span>
+              <span style="color:${m0.positionCounts.DEF >= 3 ? '#10b981' : '#f59e0b'}">🛡️ ${m0.positionCounts.DEF}/5</span>
+              <span style="color:${m0.positionCounts.MID >= 3 ? '#10b981' : '#f59e0b'}">🎯 ${m0.positionCounts.MID}/5</span>
+              <span style="color:${m0.positionCounts.FWD >= 1 ? '#10b981' : '#f59e0b'}">⚡ ${m0.positionCounts.FWD}/3</span>
+            `;
+          }
+
+          if (lot?.highestBidderId === m0.sessionId) {
+            showdownBenchStatus0.innerText = '👑 En Yüksek Teklif';
+            showdownBenchStatus0.style.color = '#10b981';
+          } else if (m0.hasPassedCurrentLot) {
+            showdownBenchStatus0.innerText = 'Pas Geçti 🛑';
+            showdownBenchStatus0.style.color = '#ef4444';
+          } else {
+            showdownBenchStatus0.innerText = 'Teklif Bekleniyor...';
+            showdownBenchStatus0.style.color = '#94a3b8';
+          }
+        }
+
+        if (m1) {
+          showdownBenchAvatar1.innerText = m1.avatar || '🤖';
+          showdownBenchName1.innerText = m1.nickname || 'Menajer 2';
+          showdownBenchBudget1.innerText = `${m1.budget} Kredi`;
+          showdownBenchRoster1.innerText = `${m1.rosterCount || 0} / 11`;
+
+          if (showdownBenchQuotas1 && m1.positionCounts) {
+            showdownBenchQuotas1.innerHTML = `
+              <span style="color:${m1.positionCounts.GK === 1 ? '#10b981' : '#f59e0b'}">🧤 ${m1.positionCounts.GK}/1</span>
+              <span style="color:${m1.positionCounts.DEF >= 3 ? '#10b981' : '#f59e0b'}">🛡️ ${m1.positionCounts.DEF}/5</span>
+              <span style="color:${m1.positionCounts.MID >= 3 ? '#10b981' : '#f59e0b'}">🎯 ${m1.positionCounts.MID}/5</span>
+              <span style="color:${m1.positionCounts.FWD >= 1 ? '#10b981' : '#f59e0b'}">⚡ ${m1.positionCounts.FWD}/3</span>
+            `;
+          }
+
+          if (lot?.highestBidderId === m1.sessionId) {
+            showdownBenchStatus1.innerText = '👑 En Yüksek Teklif';
+            showdownBenchStatus1.style.color = '#10b981';
+          } else if (m1.hasPassedCurrentLot) {
+            showdownBenchStatus1.innerText = 'Pas Geçti 🛑';
+            showdownBenchStatus1.style.color = '#ef4444';
+          } else {
+            showdownBenchStatus1.innerText = 'Teklif Bekleniyor...';
+            showdownBenchStatus1.style.color = '#94a3b8';
+          }
+        }
+      }
+
+      // 2. KADRO & TAKTİK DÜZENİ (TACTICS)
+      else if (phase === 'TACTICS') {
+        showdownAuctionOverlay.style.display = 'none';
+        showdownTacticsOverlay.style.display = 'flex';
+        showdownMatchOverlay.style.display = 'none';
+        showdownAnalysisOverlay.style.display = 'none';
+
+        const managers = Object.values(snap.managers || {}) as any[];
+        const m0 = managers.find((m) => m.teamIndex === 0) || managers[0];
+        const m1 = managers.find((m) => m.teamIndex === 1) || managers[1];
+
+        const t0 = m0 ? snap.managerTactics[m0.sessionId] : null;
+        const t1 = m1 ? snap.managerTactics[m1.sessionId] : null;
+
+        const allReady = Boolean(t0?.isReady && t1?.isReady);
+        if (allReady) {
+          showdownTacticsTimer.innerHTML = `<span style="color:#10b981; font-weight:900; font-size:1.4rem;">🔥 HER İKİ MENAJER DE HAZIR! MAÇ BAŞLIYOR...</span>`;
+        } else {
+          showdownTacticsTimer.innerHTML = `<span style="font-size:1.5rem; color:#f59e0b; font-weight:900;">${snap.phaseTimeLeft}s</span> <span style="font-size:1rem; color:#94a3b8; font-weight:700; margin-left:0.5rem;">(Her iki menajerin telefonundan "Kadro & Taktiği Onayla" demesi bekleniyor)</span>`;
+        }
+
+        if (m0 && t0) {
+          showdownTacticsName0.innerText = `${m0.nickname} (${t0.isReady ? '✅ HAZIR' : '⏳ AYARLIYOR'})`;
+          showdownTacticsForm0.innerText = `${t0.formation} • ${t0.playstyle.toUpperCase()}`;
+          const syn0 = snap.teamSynergies[0];
+          showdownTacticsSynergy0.innerHTML = `
+            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span>Hücum:</span><span style="font-weight:900; color:#38bdf8;">${syn0.attack}</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span>Orta Saha:</span><span style="font-weight:900; color:#38bdf8;">${syn0.midfield}</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span>Savunma:</span><span style="font-weight:900; color:#38bdf8;">${syn0.defense}</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span>Kimya:</span><span style="font-weight:900; color:#10b981;">%${syn0.chemistry}</span></div>
+          `;
+        }
+
+        if (m1 && t1) {
+          showdownTacticsName1.innerText = `(${t1.isReady ? '✅ HAZIR' : '⏳ AYARLIYOR'}) ${m1.nickname}`;
+          showdownTacticsForm1.innerText = `${t1.playstyle.toUpperCase()} • ${t1.formation}`;
+          const syn1 = snap.teamSynergies[1];
+          showdownTacticsSynergy1.innerHTML = `
+            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span style="font-weight:900; color:#f59e0b;">${syn1.attack}</span><span>:Hücum</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span style="font-weight:900; color:#f59e0b;">${syn1.midfield}</span><span>:Orta Saha</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span style="font-weight:900; color:#f59e0b;">${syn1.defense}</span><span>:Savunma</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span style="font-weight:900; color:#10b981;">%${syn1.chemistry}</span><span>:Kimya</span></div>
+          `;
+        }
+      }
+
+      // 3. CANLI MAÇ & DEVRE ARASI (MATCH)
+      else if (phase === 'MATCH_FIRST_HALF' || phase === 'MATCH_SECOND_HALF' || phase === 'HALFTIME') {
+        showdownAuctionOverlay.style.display = 'none';
+        showdownTacticsOverlay.style.display = 'none';
+        showdownMatchOverlay.style.display = 'flex';
+        showdownAnalysisOverlay.style.display = 'none';
+
+        const managers = Object.values(snap.managers || {}) as any[];
+        const m0 = managers.find((m) => m.teamIndex === 0) || managers[0];
+        const m1 = managers.find((m) => m.teamIndex === 1) || managers[1];
+
+        if (m0) showdownScoreTeam0.innerText = m0.nickname.toUpperCase();
+        if (m1) showdownScoreTeam1.innerText = m1.nickname.toUpperCase();
+
+        showdownScoreNum0.innerText = (snap.matchScore ? snap.matchScore[0] : 0).toString();
+        showdownScoreNum1.innerText = (snap.matchScore ? snap.matchScore[1] : 0).toString();
+
+        showdownMatchMinute.innerText = phase === 'HALFTIME' ? 'İY (45\')' : `${snap.currentMinute}'`;
+
+        // FM Live Match Stats (Momentum Bar)
+        const stats = snap.matchStats;
+        const pos0 = stats ? stats.possession[0] : 50;
+        const pos1 = stats ? stats.possession[1] : 50;
+        const xg0 = stats ? stats.xg[0] : '0.00';
+        const xg1 = stats ? stats.xg[1] : '0.00';
+
+        if (showdownFmPosText0) showdownFmPosText0.innerText = `%${pos0}`;
+        if (showdownFmPosText1) showdownFmPosText1.innerText = `%${pos1}`;
+        if (showdownFmPosBar0) showdownFmPosBar0.style.width = `${pos0}%`;
+        if (showdownFmPosBar1) showdownFmPosBar1.style.width = `${pos1}%`;
+        if (showdownFmXg0) showdownFmXg0.innerText = `xG: ${xg0}`;
+        if (showdownFmXg1) showdownFmXg1.innerText = `xG: ${xg1}`;
+
+        const hl = snap.currentHighlight;
+        if (hl) {
+          showdownCommentaryTitle.innerText = hl.commentary;
+          showdownCommentarySub.innerText = hl.subText || '';
+
+          if (hl.type === 'GOAL') {
+            showdownEventBadge.innerText = '⚽ GOOOL!';
+            showdownEventBadge.style.background = '#10b981';
+          } else if (hl.type === 'SAVE') {
+            showdownEventBadge.innerText = '🧤 KURTARIŞ!';
+            showdownEventBadge.style.background = '#2563eb';
+          } else if (hl.type === 'WOODWORK') {
+            showdownEventBadge.innerText = '💥 DİREK!';
+            showdownEventBadge.style.background = '#f59e0b';
+          } else {
+            showdownEventBadge.innerText = '🛡️ KRİTİK MÜDAHALE';
+            showdownEventBadge.style.background = '#64748b';
+          }
+        } else if (phase === 'HALFTIME') {
+          showdownCommentaryTitle.innerText = 'Devre Arası Düdüğü Çaldı!';
+          showdownCommentarySub.innerText = 'Menajerler soyunma odasında 2. yarı için taktiklerini yeniliyor.';
+          showdownEventBadge.innerText = '☕ DEVRE ARASI';
+          showdownEventBadge.style.background = '#f59e0b';
+        }
+      }
+
+      // 4. MAÇ ANALİZİ (ANALYSIS)
+      else if (phase === 'ANALYSIS' && snap.matchStats) {
+        showdownAuctionOverlay.style.display = 'none';
+        showdownTacticsOverlay.style.display = 'none';
+        showdownMatchOverlay.style.display = 'none';
+        showdownAnalysisOverlay.style.display = 'flex';
+
+        const stats = snap.matchStats;
+        showdownFinalWinnerTitle.innerText = snap.winnerNickname
+          ? `ŞAMPİYON: ${snap.winnerNickname} 🏆`
+          : 'DOSTLUK KAZANDI (BERABERLİK) 🤝';
+        showdownFinalScoreText.innerText = `${stats.score[0]} - ${stats.score[1]}`;
+
+        showdownMvpName.innerText = stats.mvp.name;
+        showdownMvpRating.innerText = stats.mvp.rating.toString();
+        showdownMvpDesc.innerText = stats.mvp.reason;
+
+        showdownAnalysisStatsTable.innerHTML = `
+          <div style="display:flex; justify-content:space-between; font-size:1.1rem; margin-bottom:0.4rem;">
+            <span style="font-weight:900; color:#38bdf8;">%${stats.possession[0]}</span>
+            <span style="font-weight:800; color:#94a3b8;">TOPLA OYNAMA</span>
+            <span style="font-weight:900; color:#f59e0b;">%${stats.possession[1]}</span>
+          </div>
+          <div style="height:10px; background:#1e293b; border-radius:5px; overflow:hidden; display:flex; margin-bottom:1.2rem;">
+            <div style="width:${stats.possession[0]}%; background:#38bdf8;"></div>
+            <div style="width:${stats.possession[1]}%; background:#f59e0b;"></div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; font-size:1.1rem; margin-bottom:0.8rem;">
+            <span style="font-weight:900; color:#38bdf8;">${stats.xg[0]}</span>
+            <span style="font-weight:800; color:#94a3b8;">BEKLENEN GOL (xG)</span>
+            <span style="font-weight:900; color:#f59e0b;">${stats.xg[1]}</span>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; font-size:1.1rem; margin-bottom:0.8rem;">
+            <span style="font-weight:900; color:#38bdf8;">${stats.shots[0]} (${stats.shotsOnTarget[0]})</span>
+            <span style="font-weight:800; color:#94a3b8;">ŞUT (İSABETLİ)</span>
+            <span style="font-weight:900; color:#f59e0b;">${stats.shots[1]} (${stats.shotsOnTarget[1]})</span>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; font-size:1.1rem;">
+            <span style="font-weight:900; color:#38bdf8;">${stats.saves[0]}</span>
+            <span style="font-weight:800; color:#94a3b8;">KURTARIŞ</span>
+            <span style="font-weight:900; color:#f59e0b;">${stats.saves[1]}</span>
+          </div>
+        `;
       }
     };
   } catch (err: any) {

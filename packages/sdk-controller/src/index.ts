@@ -45,6 +45,10 @@ export class ControllerSDK {
       this.room.onMessage('BLUFF_SUCCESS', (payload: any) => {
         this.onBluffSuccess(payload);
       });
+
+      this.room.onMessage('SHOWDOWN_SNAPSHOT', (payload: any) => {
+        this.onShowdownState(payload);
+      });
       
     } catch (error) {
       console.error('[ControllerSDK] Odaya katılınamadı', error);
@@ -114,6 +118,54 @@ export class ControllerSDK {
     this.room?.send('RETURN_TO_LOBBY');
   }
 
+  public pauseGame() {
+    this.room?.send('PAUSE_GAME');
+  }
+
+  public resumeGame() {
+    this.room?.send('RESUME_GAME');
+  }
+
+  public launchMatch() {
+    this.room?.send('LAUNCH_MATCH');
+  }
+
+  public customizePlayer(data: { color?: string; costume?: string }) {
+    this.room?.send('CUSTOMIZE_PLAYER', data);
+  }
+
+  public updateGameSettings(settings: any) {
+    this.room?.send('UPDATE_GAME_SETTINGS', settings);
+  }
+
+  public send(type: string, message?: any) {
+    this.room?.send(type, message);
+  }
+
+  public onMessage(type: string, callback: (message: any) => void) {
+    this.room?.onMessage(type, callback);
+  }
+
+  public sendShowdownBid(action: any) {
+    this.room?.send('SHOWDOWN_BID', action);
+  }
+
+  public sendShowdownPickCard(cardId: string) {
+    this.room?.send('SHOWDOWN_PICK_CARD', { cardId });
+  }
+
+  public sendShowdownTactics(submission: any) {
+    this.room?.send('SHOWDOWN_TACTICS', submission);
+  }
+
+  public sendShowdownHalftime(adjustment: any) {
+    this.room?.send('SHOWDOWN_HALFTIME', adjustment);
+  }
+
+  public sendShowdownAllOutAttack() {
+    this.room?.send('SHOWDOWN_ALL_OUT_ATTACK');
+  }
+
   public get sessionId(): string | undefined {
     return this.room?.sessionId;
   }
@@ -126,5 +178,6 @@ export class ControllerSDK {
   public onRcRushEvent: (event: any) => void = () => {};
   public onBluffError: (error: string) => void = () => {};
   public onBluffSuccess: (data: any) => void = () => {};
+  public onShowdownState: (state: any) => void = () => {};
 }
 
