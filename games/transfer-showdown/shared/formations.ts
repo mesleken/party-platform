@@ -52,6 +52,45 @@ export const FORMATIONS: Record<FormationType, FormationSlot[]> = {
     { slotIndex: 8, role: 'RWB', requiredPosition: 'MID', x: 86, y: 52 },
     { slotIndex: 9, role: 'LST', requiredPosition: 'FWD', x: 38, y: 22 },
     { slotIndex: 10, role: 'RST', requiredPosition: 'FWD', x: 62, y: 22 }
+  ],
+  '5-3-2': [
+    { slotIndex: 0, role: 'GK', requiredPosition: 'GK', x: 50, y: 88 },
+    { slotIndex: 1, role: 'LWB', requiredPosition: 'DEF', x: 14, y: 70 },
+    { slotIndex: 2, role: 'LCB', requiredPosition: 'DEF', x: 32, y: 76 },
+    { slotIndex: 3, role: 'CB', requiredPosition: 'DEF', x: 50, y: 78 },
+    { slotIndex: 4, role: 'RCB', requiredPosition: 'DEF', x: 68, y: 76 },
+    { slotIndex: 5, role: 'RWB', requiredPosition: 'DEF', x: 86, y: 70 },
+    { slotIndex: 6, role: 'LCM', requiredPosition: 'MID', x: 32, y: 50 },
+    { slotIndex: 7, role: 'CDM', requiredPosition: 'MID', x: 50, y: 55 },
+    { slotIndex: 8, role: 'RCM', requiredPosition: 'MID', x: 68, y: 50 },
+    { slotIndex: 9, role: 'LST', requiredPosition: 'FWD', x: 38, y: 22 },
+    { slotIndex: 10, role: 'RST', requiredPosition: 'FWD', x: 62, y: 22 }
+  ],
+  '3-4-3': [
+    { slotIndex: 0, role: 'GK', requiredPosition: 'GK', x: 50, y: 88 },
+    { slotIndex: 1, role: 'LCB', requiredPosition: 'DEF', x: 28, y: 76 },
+    { slotIndex: 2, role: 'CB', requiredPosition: 'DEF', x: 50, y: 78 },
+    { slotIndex: 3, role: 'RCB', requiredPosition: 'DEF', x: 72, y: 76 },
+    { slotIndex: 4, role: 'LM', requiredPosition: 'MID', x: 16, y: 50 },
+    { slotIndex: 5, role: 'LCM', requiredPosition: 'MID', x: 38, y: 52 },
+    { slotIndex: 6, role: 'RCM', requiredPosition: 'MID', x: 62, y: 52 },
+    { slotIndex: 7, role: 'RM', requiredPosition: 'MID', x: 84, y: 50 },
+    { slotIndex: 8, role: 'LW', requiredPosition: 'FWD', x: 22, y: 24 },
+    { slotIndex: 9, role: 'ST', requiredPosition: 'FWD', x: 50, y: 20 },
+    { slotIndex: 10, role: 'RW', requiredPosition: 'FWD', x: 78, y: 24 }
+  ],
+  '4-1-4-1': [
+    { slotIndex: 0, role: 'GK', requiredPosition: 'GK', x: 50, y: 88 },
+    { slotIndex: 1, role: 'LB', requiredPosition: 'DEF', x: 18, y: 72 },
+    { slotIndex: 2, role: 'LCB', requiredPosition: 'DEF', x: 38, y: 75 },
+    { slotIndex: 3, role: 'RCB', requiredPosition: 'DEF', x: 62, y: 75 },
+    { slotIndex: 4, role: 'RB', requiredPosition: 'DEF', x: 82, y: 72 },
+    { slotIndex: 5, role: 'CDM', requiredPosition: 'MID', x: 50, y: 60 },
+    { slotIndex: 6, role: 'LM', requiredPosition: 'MID', x: 18, y: 44 },
+    { slotIndex: 7, role: 'LCM', requiredPosition: 'MID', x: 38, y: 46 },
+    { slotIndex: 8, role: 'RCM', requiredPosition: 'MID', x: 62, y: 46 },
+    { slotIndex: 9, role: 'RM', requiredPosition: 'MID', x: 82, y: 44 },
+    { slotIndex: 10, role: 'ST', requiredPosition: 'FWD', x: 50, y: 20 }
   ]
 };
 

@@ -369,6 +369,12 @@ async function bootstrap() {
   const showdownCommentaryTitle = document.getElementById('showdown-commentary-title')!;
   const showdownCommentarySub = document.getElementById('showdown-commentary-sub')!;
   const showdownEventBadge = document.getElementById('showdown-event-badge')!;
+  const showdownPhaseBadge = document.getElementById('showdown-phase-badge');
+  const showdownMentality0 = document.getElementById('showdown-mentality-0');
+  const showdownMentality1 = document.getElementById('showdown-mentality-1');
+  const showdownShoutBanner = document.getElementById('showdown-shout-banner');
+  const showdownTimelineProgress = document.getElementById('showdown-timeline-progress');
+  const showdownTimelineIcons = document.getElementById('showdown-timeline-icons');
 
   const showdownFinalWinnerTitle = document.getElementById('showdown-final-winner-title')!;
   const showdownFinalScoreText = document.getElementById('showdown-final-score-text')!;
@@ -1695,19 +1701,17 @@ async function bootstrap() {
               showdownDraftBanner.style.display = 'none';
             }
 
-            // 4 Futbolcu Kartı (Fotoğraflarla)
+            // 4 Futbolcu Kartı (Fotoğraflarla - Reytingsiz ve Kulüpsüz)
             lot.pack.cards.forEach((c: any, idx: number) => {
               const cardEl = document.getElementById(`showdown-pack-card-${idx}`);
-              const ovrEl = document.getElementById(`showdown-card-ovr-${idx}`);
               const posEl = document.getElementById(`showdown-card-pos-${idx}`);
               const nameEl = document.getElementById(`showdown-card-name-${idx}`);
               const metaEl = document.getElementById(`showdown-card-meta-${idx}`);
               const imgEl = document.getElementById(`showdown-card-img-${idx}`) as HTMLImageElement;
 
-              if (ovrEl) ovrEl.innerText = c.ovr.toString();
-              if (posEl) posEl.innerText = c.position;
+              if (posEl) posEl.innerText = c.specificRole || c.position;
               if (nameEl) nameEl.innerText = c.name;
-              if (metaEl) metaEl.innerText = `${c.countryFlag} ${c.club}`;
+              if (metaEl) metaEl.innerText = `${c.countryFlag} ${c.nationality || ''}`;
 
               if (imgEl) {
                 if (c.photoUrl) {
@@ -1836,11 +1840,12 @@ async function bootstrap() {
           showdownTacticsName0.innerText = `${m0.nickname} (${t0.isReady ? '✅ HAZIR' : '⏳ AYARLIYOR'})`;
           showdownTacticsForm0.innerText = `${t0.formation} • ${t0.playstyle.toUpperCase()}`;
           const syn0 = snap.teamSynergies[0];
+          const starStr = (num: number) => num === 3 ? '★★★' : (num === 2 ? '★★☆' : '★☆☆');
           showdownTacticsSynergy0.innerHTML = `
-            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span>Hücum:</span><span style="font-weight:900; color:#38bdf8;">${syn0.attack}</span></div>
-            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span>Orta Saha:</span><span style="font-weight:900; color:#38bdf8;">${syn0.midfield}</span></div>
-            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span>Savunma:</span><span style="font-weight:900; color:#38bdf8;">${syn0.defense}</span></div>
-            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span>Kimya:</span><span style="font-weight:900; color:#10b981;">%${syn0.chemistry}</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:1.05rem;"><span>Hücum:</span><span style="font-weight:900; color:#facc15; letter-spacing:2px;">${starStr(syn0.attackStars || 2)}</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:1.05rem;"><span>Orta Saha:</span><span style="font-weight:900; color:#facc15; letter-spacing:2px;">${starStr(syn0.midfieldStars || 2)}</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:1.05rem;"><span>Savunma:</span><span style="font-weight:900; color:#facc15; letter-spacing:2px;">${starStr(syn0.defenseStars || 2)}</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span>Mevki Uyumu:</span><span style="font-weight:900; color:#10b981;">%${syn0.chemistry}</span></div>
           `;
         }
 
@@ -1848,11 +1853,12 @@ async function bootstrap() {
           showdownTacticsName1.innerText = `(${t1.isReady ? '✅ HAZIR' : '⏳ AYARLIYOR'}) ${m1.nickname}`;
           showdownTacticsForm1.innerText = `${t1.playstyle.toUpperCase()} • ${t1.formation}`;
           const syn1 = snap.teamSynergies[1];
+          const starStr = (num: number) => num === 3 ? '★★★' : (num === 2 ? '★★☆' : '★☆☆');
           showdownTacticsSynergy1.innerHTML = `
-            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span style="font-weight:900; color:#f59e0b;">${syn1.attack}</span><span>:Hücum</span></div>
-            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span style="font-weight:900; color:#f59e0b;">${syn1.midfield}</span><span>:Orta Saha</span></div>
-            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span style="font-weight:900; color:#f59e0b;">${syn1.defense}</span><span>:Savunma</span></div>
-            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span style="font-weight:900; color:#10b981;">%${syn1.chemistry}</span><span>:Kimya</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:1.05rem;"><span style="font-weight:900; color:#facc15; letter-spacing:2px;">${starStr(syn1.attackStars || 2)}</span><span>:Hücum</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:1.05rem;"><span style="font-weight:900; color:#facc15; letter-spacing:2px;">${starStr(syn1.midfieldStars || 2)}</span><span>:Orta Saha</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:1.05rem;"><span style="font-weight:900; color:#facc15; letter-spacing:2px;">${starStr(syn1.defenseStars || 2)}</span><span>:Savunma</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:0.95rem;"><span style="font-weight:900; color:#10b981;">%${syn1.chemistry}</span><span>:Mevki Uyumu</span></div>
           `;
         }
       }
@@ -1874,9 +1880,81 @@ async function bootstrap() {
         showdownScoreNum0.innerText = (snap.matchScore ? snap.matchScore[0] : 0).toString();
         showdownScoreNum1.innerText = (snap.matchScore ? snap.matchScore[1] : 0).toString();
 
-        showdownMatchMinute.innerText = phase === 'HALFTIME' ? 'İY (45\')' : `${snap.currentMinute}'`;
+        // 1. Dijital Maç Saati (MM:SS)
+        if (snap.pitchState && snap.pitchState.matchSecond !== undefined) {
+          const totalSec = snap.pitchState.matchSecond;
+          const mins = Math.floor(totalSec / 60).toString().padStart(2, '0');
+          const secs = Math.floor(totalSec % 60).toString().padStart(2, '0');
+          showdownMatchMinute.innerText = phase === 'HALFTIME' ? 'İY (45:00)' : `${mins}:${secs}`;
+        } else {
+          showdownMatchMinute.innerText = phase === 'HALFTIME' ? 'İY (45\')' : `${snap.currentMinute}'`;
+        }
 
-        // FM Live Match Stats (Momentum Bar)
+        // 2. Canlı Oyun Fazı Rozeti
+        if (showdownPhaseBadge && snap.pitchState) {
+          const phaseNames: Record<string, { label: string; color: string }> = {
+            KICK_OFF: { label: 'SANTRADA TOP ÇEVRİLİYOR', color: '#64748b' },
+            BUILD_UP: { label: 'GERİDEN OYUN KURMA', color: '#0284c7' },
+            MIDFIELD_BATTLE: { label: 'ORTA SAHA MÜCADELESİ', color: '#2563eb' },
+            WING_ATTACK: { label: '⚡ KANAT BİNDİRMESİ', color: '#f59e0b' },
+            THROUGH_BALL: { label: '⚡ SAVUNMA ARKASINA KOŞU', color: '#f97316' },
+            BOX_DANGER: { label: '🔥 CEZA SAHASINDA TEHLİKE!', color: '#ef4444' },
+            SHOT_ON_GOAL: { label: '💥 KALEYE ŞUT!', color: '#dc2626' },
+            SET_PIECE_CORNER: { label: '🚩 KÖŞE VURUŞU (KORNER)', color: '#eab308' },
+            GOAL_KICK: { label: '🥅 KALE VURUŞU (AUT)', color: '#475569' },
+            FREE_KICK: { label: '⚠️ SERBEST VURUŞ (FAUL)', color: '#f59e0b' },
+            FREE_KICK_OFFSIDE: { label: '🚩 OFSAYT (ENDİREKT)', color: '#ef4444' },
+            THROW_IN: { label: '👟 TAÇ ATIŞI', color: '#06b6d4' },
+            PENALTY_KICK: { label: '🎯 PENALTI VURUŞU', color: '#dc2626' },
+            GOAL_CELEBRATION: { label: '⚽ GOOOLL!!', color: '#10b981' }
+          };
+          const pInfo = phaseNames[snap.pitchState.phase] || { label: 'CANLI MAÇ', color: '#2563eb' };
+          showdownPhaseBadge.innerText = pInfo.label;
+          showdownPhaseBadge.style.background = pInfo.color;
+        }
+
+        // 3. Menajer Mentalite Rozetleri
+        if (snap.managerMentality) {
+          const ment0 = m0 ? snap.managerMentality[m0.sessionId] : 'balanced';
+          const ment1 = m1 ? snap.managerMentality[m1.sessionId] : 'balanced';
+          const mentLabels: Record<string, string> = {
+            defensive: '🛡️ SAVUNMA',
+            balanced: '⚖️ DENGELİ',
+            attacking: '⚔️ HÜCUM',
+            all_out_attack: '🚨 TÜM HATLARIYLA'
+          };
+          if (showdownMentality0) showdownMentality0.innerText = mentLabels[ment0] || 'DENGELİ';
+          if (showdownMentality1) showdownMentality1.innerText = mentLabels[ment1] || 'DENGELİ';
+        }
+
+        // 4. Kenar Talimatı (Shout) Bildirimi
+        if (showdownShoutBanner) {
+          const activeShoutObj = snap.activeShouts
+            ? Object.values(snap.activeShouts).find((s: any) => s && s.text)
+            : null;
+          if (activeShoutObj) {
+            showdownShoutBanner.style.display = 'block';
+            showdownShoutBanner.innerText = (activeShoutObj as any).text;
+          } else {
+            showdownShoutBanner.style.display = 'none';
+          }
+        }
+
+        // 5. FM Timeline İlerlemesi (0' to 90')
+        if (showdownTimelineProgress && snap.pitchState) {
+          const progressPct = Math.min(100, (snap.pitchState.matchSecond / 5400) * 100);
+          showdownTimelineProgress.style.width = `${progressPct}%`;
+        }
+
+        if (showdownTimelineIcons && snap.timelineMarkers) {
+          showdownTimelineIcons.innerHTML = snap.timelineMarkers.map((m: any) => {
+            const leftPct = Math.min(98, (m.minute / 90) * 100);
+            const icon = m.type === 'GOAL' ? '⚽' : m.type === 'SAVE' ? '🧤' : '💥';
+            return `<span style="position:absolute; left:${leftPct}%; top:-8px; font-size:12px; filter:drop-shadow(0 0 4px #000);">${icon}</span>`;
+          }).join('');
+        }
+
+        // 6. FM Live Match Stats (Momentum Bar)
         const stats = snap.matchStats;
         const pos0 = stats ? stats.possession[0] : 50;
         const pos1 = stats ? stats.possession[1] : 50;
@@ -1890,24 +1968,52 @@ async function bootstrap() {
         if (showdownFmXg0) showdownFmXg0.innerText = `xG: ${xg0}`;
         if (showdownFmXg1) showdownFmXg1.innerText = `xG: ${xg1}`;
 
-        const hl = snap.currentHighlight;
-        if (hl) {
-          showdownCommentaryTitle.innerText = hl.commentary;
-          showdownCommentarySub.innerText = hl.subText || '';
+        // 7. FM Canlı Spiker Akışı (Live Ticker)
+        if (snap.liveTicker && snap.liveTicker.length > 0) {
+          const latest = snap.liveTicker[0];
+          showdownCommentaryTitle.innerText = latest.text;
+          showdownCommentarySub.innerText = snap.liveTicker[1]?.text || '';
 
-          if (hl.type === 'GOAL') {
+          if (latest.type === 'GOAL') {
             showdownEventBadge.innerText = '⚽ GOOOL!';
             showdownEventBadge.style.background = '#10b981';
-          } else if (hl.type === 'SAVE') {
+          } else if (latest.type === 'OFFSIDE') {
+            showdownEventBadge.innerText = '🚩 OFSAYT!';
+            showdownEventBadge.style.background = '#ef4444';
+          } else if (latest.type === 'FOUL') {
+            showdownEventBadge.innerText = '⚠️ FAUL!';
+            showdownEventBadge.style.background = '#f59e0b';
+          } else if (latest.type === 'RESTART') {
+            if (latest.text.includes('TAÇ') || latest.text.includes('taç')) {
+              showdownEventBadge.innerText = '👟 TAÇ!';
+              showdownEventBadge.style.background = '#06b6d4';
+            } else if (latest.text.includes('KORNER') || latest.text.includes('korner')) {
+              showdownEventBadge.innerText = '🚩 KORNER!';
+              showdownEventBadge.style.background = '#eab308';
+            } else if (latest.text.includes('KALE VURUŞU') || latest.text.includes('AUT') || latest.text.includes('aut')) {
+              showdownEventBadge.innerText = '🥅 AUT!';
+              showdownEventBadge.style.background = '#64748b';
+            } else {
+              showdownEventBadge.innerText = '🔄 DURAN TOP';
+              showdownEventBadge.style.background = '#64748b';
+            }
+          } else if (latest.type === 'DANGER') {
+            showdownEventBadge.innerText = '⚡ TEHLİKE';
+            showdownEventBadge.style.background = '#f97316';
+          } else if (latest.type === 'SAVE') {
             showdownEventBadge.innerText = '🧤 KURTARIŞ!';
             showdownEventBadge.style.background = '#2563eb';
-          } else if (hl.type === 'WOODWORK') {
-            showdownEventBadge.innerText = '💥 DİREK!';
-            showdownEventBadge.style.background = '#f59e0b';
+          } else if (latest.type === 'SHOUT') {
+            showdownEventBadge.innerText = '📣 TALİMAT';
+            showdownEventBadge.style.background = '#eab308';
           } else {
-            showdownEventBadge.innerText = '🛡️ KRİTİK MÜDAHALE';
-            showdownEventBadge.style.background = '#64748b';
+            showdownEventBadge.innerText = '🎙️ CANLI MAÇ';
+            showdownEventBadge.style.background = '#334155';
           }
+        } else if (snap.currentHighlight) {
+          const hl = snap.currentHighlight;
+          showdownCommentaryTitle.innerText = hl.commentary;
+          showdownCommentarySub.innerText = hl.subText || '';
         } else if (phase === 'HALFTIME') {
           showdownCommentaryTitle.innerText = 'Devre Arası Düdüğü Çaldı!';
           showdownCommentarySub.innerText = 'Menajerler soyunma odasında 2. yarı için taktiklerini yeniliyor.';

@@ -3,19 +3,22 @@ import {
   BidAction,
   CardPosition,
   FormationType,
+  LiveTacticsAction,
   ManagerBudgetState,
   ManagerTactics,
   MatchHighlight,
   ShowdownPhase,
   ShowdownSnapshot,
   TacticsSubmission,
-  TeamSynergy
+  TeamSynergy,
+  TouchlineShoutType
 } from '../shared/types.js';
 import { autoAssignLineup } from '../shared/formations.js';
-import { calculateTeamSynergy } from '../shared/tactics.js';
+import { calculateTeamSynergy, adjustComparativeStars } from '../shared/tactics.js';
 import { AuctionEngine } from './AuctionEngine.js';
 import { SquadValidator } from './SquadValidator.js';
 import { MatchSimulator } from './MatchSimulator.js';
+import { FMMatchEngine } from './FMMatchEngine.js';
 
 export class TransferShowdownGame {
   private room: Room<any>;
@@ -27,6 +30,7 @@ export class TransferShowdownGame {
 
   private auctionEngine?: AuctionEngine;
   private matchSimulator?: MatchSimulator;
+  private fmEngine?: FMMatchEngine;
 
   private gameInterval?: NodeJS.Timeout;
   private currentHighlight: MatchHighlight | null = null;
@@ -83,6 +87,7 @@ export class TransferShowdownGame {
         formation: '4-3-3',
         playstyle: 'balanced',
         defensiveLine: 'balanced',
+        mentality: 'balanced',
         lineup: {},
         isReady: false,
         allOutAttack: false
@@ -111,6 +116,7 @@ export class TransferShowdownGame {
         formation: '4-3-3',
         playstyle: 'balanced',
         defensiveLine: 'balanced',
+        mentality: 'balanced',
         lineup: {},
         isReady: true,
         allOutAttack: false
@@ -119,9 +125,9 @@ export class TransferShowdownGame {
 
     this.startAuctionPhase();
 
-    // 200ms aralıklarla oyun döngüsünü çalıştır
+    // 100ms aralıklarla (10Hz) oyun döngüsünü çalıştır (Akıcı fizik ve anında reaksiyon)
     if (this.gameInterval) clearInterval(this.gameInterval);
-    this.gameInterval = setInterval(() => this.tick(0.2), 200);
+    this.gameInterval = setInterval(() => this.tick(0.1), 100);
   }
 
   // ==========================================
@@ -263,6 +269,9 @@ export class TransferShowdownGame {
     tactics.formation = submission.formation;
     tactics.playstyle = submission.playstyle;
     tactics.defensiveLine = submission.defensiveLine;
+    if (submission.mentality) {
+      tactics.mentality = submission.mentality;
+    }
     tactics.lineup = submission.lineup || autoAssignLineup(submission.formation, manager.cards);
     if (submission.isReady !== undefined) {
       tactics.isReady = submission.isReady;
@@ -287,7 +296,7 @@ export class TransferShowdownGame {
   }
 
   // ==========================================
-  // PHASE 3: 3D MATCH SIMULATION
+  // PHASE 3: FOOTBALL MANAGER (FM) MATCH SIMULATION
   // ==========================================
   private startFirstHalf() {
     this.phase = 'MATCH_FIRST_HALF';
@@ -299,26 +308,23 @@ export class TransferShowdownGame {
     const homeTactics = this.managerTactics.get(homeManager.sessionId)!;
     const awayTactics = this.managerTactics.get(awayManager.sessionId)!;
 
-    this.matchSimulator = new MatchSimulator(
+    this.fmEngine = new FMMatchEngine(
       homeManager.cards,
       awayManager.cards,
       homeTactics,
-      awayTactics
+      awayTactics,
+      homeManager,
+      awayManager
     );
 
-    this.allHighlights = this.matchSimulator.getHighlights();
-    this.highlightIndex = 0;
-    this.currentHighlight = this.allHighlights[0] || null;
-    this.highlightElapsedSec = 0;
-    this.currentMinute = this.currentHighlight ? this.currentHighlight.minute : 1;
     this.matchScore = [0, 0];
-
+    this.currentMinute = 1;
     this.broadcastState();
   }
 
   private startHalftime() {
     this.phase = 'HALFTIME';
-    this.phaseTimeLeft = 12; // 12 saniye devre arası taktik molası
+    this.phaseTimeLeft = 14; // 14 saniye devre arası taktik molası
 
     // Menajerlerin taktik hazır durumlarını sıfırla
     this.managerTactics.forEach((t) => (t.isReady = false));
@@ -338,10 +344,15 @@ export class TransferShowdownGame {
     }
     if (tacticsUpdate.playstyle) tactics.playstyle = tacticsUpdate.playstyle;
     if (tacticsUpdate.defensiveLine) tactics.defensiveLine = tacticsUpdate.defensiveLine;
+    if (tacticsUpdate.mentality) tactics.mentality = tacticsUpdate.mentality;
     tactics.isReady = true;
 
-    if (this.matchSimulator) {
-      this.matchSimulator.updateTactics(manager.teamIndex, tactics);
+    if (this.fmEngine) {
+      this.fmEngine.updateLiveTactics(manager.teamIndex, {
+        mentality: tactics.mentality,
+        playstyle: tactics.playstyle,
+        defensiveLine: tactics.defensiveLine
+      });
     }
 
     const activeManagers = Array.from(this.managers.values());
@@ -361,34 +372,49 @@ export class TransferShowdownGame {
 
   private startSecondHalf() {
     this.phase = 'MATCH_SECOND_HALF';
-    if (this.matchSimulator) {
-      this.matchSimulator.reSimulateSecondHalf();
-      this.allHighlights = this.matchSimulator.getHighlights();
+    if (this.fmEngine) {
+      this.fmEngine.startSecondHalf();
+    }
+    this.broadcastState();
+  }
+
+  public handleLiveTactics(sessionId: string, action: LiveTacticsAction) {
+    const manager = this.managers.get(sessionId);
+    if (!manager) return;
+
+    const tactics = this.managerTactics.get(sessionId);
+    if (tactics) {
+      if (action.mentality) tactics.mentality = action.mentality;
+      if (action.playstyle) tactics.playstyle = action.playstyle;
+      if (action.defensiveLine) tactics.defensiveLine = action.defensiveLine;
     }
 
-    // İlk yarının bittiği indeksten devam et
-    const nextIdx = this.allHighlights.findIndex((h) => h.minute > 45);
-    this.highlightIndex = nextIdx !== -1 ? nextIdx : this.allHighlights.length - 1;
-    this.currentHighlight = this.allHighlights[this.highlightIndex] || null;
-    this.highlightElapsedSec = 0;
+    if (this.fmEngine) {
+      this.fmEngine.updateLiveTactics(manager.teamIndex, action);
+    }
+    this.broadcastState();
+  }
 
+  public handleTouchlineShout(sessionId: string, shout: TouchlineShoutType) {
+    if (this.phase !== 'MATCH_FIRST_HALF' && this.phase !== 'MATCH_SECOND_HALF') return;
+    const manager = this.managers.get(sessionId);
+    if (!manager || !this.fmEngine) return;
+
+    this.fmEngine.triggerTouchlineShout(manager.teamIndex, shout);
     this.broadcastState();
   }
 
   public handleAllOutAttack(sessionId: string) {
-    if (this.phase !== 'MATCH_SECOND_HALF' || this.currentMinute < 75) return;
+    if (this.phase !== 'MATCH_SECOND_HALF' && this.phase !== 'MATCH_FIRST_HALF') return;
+    const manager = this.managers.get(sessionId);
+    if (!manager || !this.fmEngine) return;
 
     const tactics = this.managerTactics.get(sessionId);
-    const manager = this.managers.get(sessionId);
-    if (!tactics || !manager) return;
-
-    tactics.allOutAttack = true;
-    if (this.matchSimulator) {
-      this.matchSimulator.updateTactics(manager.teamIndex, tactics);
-      this.matchSimulator.reSimulateSecondHalf();
-      this.allHighlights = this.matchSimulator.getHighlights();
+    if (tactics) {
+      tactics.mentality = 'all_out_attack';
+      tactics.allOutAttack = true;
     }
-
+    this.fmEngine.updateLiveTactics(manager.teamIndex, { mentality: 'all_out_attack' });
     this.broadcastState();
   }
 
@@ -399,7 +425,7 @@ export class TransferShowdownGame {
     this.phase = 'ANALYSIS';
     this.phaseTimeLeft = 30;
 
-    const stats = this.matchSimulator?.getMatchStats();
+    const stats = this.fmEngine ? this.fmEngine.getFinalStats() : null;
     let winnerNick = 'Beraberlik';
     if (stats && stats.winnerTeamIndex !== -1) {
       const winnerManager = Array.from(this.managers.values()).find((m) => m.teamIndex === stats.winnerTeamIndex);
@@ -426,55 +452,31 @@ export class TransferShowdownGame {
     } else if (this.phase === 'TACTICS') {
       this.phaseTimeLeft -= deltaSec;
       if (this.phaseTimeLeft <= 0) {
-        // Kullanıcı kuralı: "iki oyuncu da hazır demeli sonrasında maça geçmeli."
         const allReady = Array.from(this.managerTactics.values()).every((t) => t.isReady);
         if (allReady) {
           this.phaseTimeLeft = 0;
           this.startFirstHalf();
         } else {
-          // Eğer henüz her iki oyuncu hazır demediyse süreyi sıfırlama, oyuncuları beklemeye devam et
           this.phaseTimeLeft = 30; // 30 saniye daha ekle
           this.broadcastState();
         }
       } else {
         this.broadcastState();
       }
-    } else if (this.phase === 'MATCH_FIRST_HALF' || this.phase === 'MATCH_SECOND_HALF') {
-      if (!this.currentHighlight) {
-        if (this.phase === 'MATCH_FIRST_HALF') {
+    } else if (this.phase === 'MATCH_FIRST_HALF') {
+      if (this.fmEngine) {
+        this.fmEngine.step(deltaSec);
+        const fmSnap = this.fmEngine.getSnapshotState();
+        this.matchScore = fmSnap.matchScore;
+        this.currentMinute = fmSnap.currentMinute;
+        this.currentHighlight = fmSnap.currentHighlight;
+
+        // İlk yarı 45:00 (2700 saniye) bittiğinde devre arasına geç
+        if (fmSnap.pitchState.matchSecond >= 2700) {
           this.startHalftime();
-        } else {
-          this.finishMatchAndShowAnalysis();
-        }
-        return;
-      }
-
-      this.highlightElapsedSec += deltaSec;
-      this.matchScore = [this.currentHighlight.scoreHome, this.currentHighlight.scoreAway];
-      this.currentMinute = this.currentHighlight.minute;
-
-      if (this.highlightElapsedSec >= this.currentHighlight.durationSec) {
-        // Bu highlight tamamlandı, bir sonrakine geç
-        this.highlightElapsedSec = 0;
-        this.highlightIndex++;
-
-        if (this.phase === 'MATCH_FIRST_HALF') {
-          const next = this.allHighlights[this.highlightIndex];
-          if (!next || next.minute > 45) {
-            this.startHalftime();
-            return;
-          }
-          this.currentHighlight = next;
-        } else {
-          const next = this.allHighlights[this.highlightIndex];
-          if (!next) {
-            this.finishMatchAndShowAnalysis();
-            return;
-          }
-          this.currentHighlight = next;
+          return;
         }
       }
-
       this.broadcastState();
     } else if (this.phase === 'HALFTIME') {
       this.phaseTimeLeft -= deltaSec;
@@ -484,11 +486,25 @@ export class TransferShowdownGame {
       } else {
         this.broadcastState();
       }
+    } else if (this.phase === 'MATCH_SECOND_HALF') {
+      if (this.fmEngine) {
+        this.fmEngine.step(deltaSec);
+        const fmSnap = this.fmEngine.getSnapshotState();
+        this.matchScore = fmSnap.matchScore;
+        this.currentMinute = fmSnap.currentMinute;
+        this.currentHighlight = fmSnap.currentHighlight;
+
+        // Maç 90:00 (5400 saniye) bittiğinde analize geç
+        if (this.fmEngine.isFinished()) {
+          this.finishMatchAndShowAnalysis();
+          return;
+        }
+      }
+      this.broadcastState();
     } else if (this.phase === 'ANALYSIS') {
       this.phaseTimeLeft -= deltaSec;
       if (this.phaseTimeLeft <= 0) {
         this.phaseTimeLeft = 0;
-        // Maç analizi tamamlandı
       }
       this.broadcastState();
     }
@@ -502,21 +518,25 @@ export class TransferShowdownGame {
     this.managerTactics.forEach((v, k) => (tacticsObj[k] = v));
 
     let synergies: [TeamSynergy, TeamSynergy];
-    if (this.matchSimulator) {
-      synergies = this.matchSimulator.getSynergies();
-    } else {
-      const managerList = Array.from(this.managers.values());
-      const m0 = managerList.find((m) => m.teamIndex === 0) || managerList[0];
-      const m1 = managerList.find((m) => m.teamIndex === 1) || managerList[1];
-      const t0 = m0 ? this.managerTactics.get(m0.sessionId) : null;
-      const t1 = m1 ? this.managerTactics.get(m1.sessionId) : null;
-      const syn0 = (m0 && t0) ? calculateTeamSynergy(t0, m0.cards) : { attack: 75, midfield: 75, defense: 75, goalkeeping: 75, chemistry: 75, overall: 75 };
-      const syn1 = (m1 && t1) ? calculateTeamSynergy(t1, m1.cards) : { attack: 75, midfield: 75, defense: 75, goalkeeping: 75, chemistry: 75, overall: 75 };
-      synergies = [syn0, syn1];
-    }
+    const managerList = Array.from(this.managers.values());
+    const m0 = managerList.find((m) => m.teamIndex === 0) || managerList[0];
+    const m1 = managerList.find((m) => m.teamIndex === 1) || managerList[1];
+    const t0 = m0 ? this.managerTactics.get(m0.sessionId) : null;
+    const t1 = m1 ? this.managerTactics.get(m1.sessionId) : null;
+    const syn0Raw = (m0 && t0)
+      ? calculateTeamSynergy(t0, m0.cards)
+      : { attack: 75, midfield: 75, defense: 75, goalkeeping: 75, chemistry: 75, overall: 75, attackStars: 2 as const, midfieldStars: 2 as const, defenseStars: 2 as const };
+    const syn1Raw = (m1 && t1)
+      ? calculateTeamSynergy(t1, m1.cards)
+      : { attack: 75, midfield: 75, defense: 75, goalkeeping: 75, chemistry: 75, overall: 75, attackStars: 2 as const, midfieldStars: 2 as const, defenseStars: 2 as const };
+    const adjusted = adjustComparativeStars(syn0Raw, syn1Raw);
+    synergies = [adjusted.team0, adjusted.team1];
+
+    // FM Motor Snapshot Verileri
+    const fmState = this.fmEngine ? this.fmEngine.getSnapshotState() : null;
 
     let winnerNick = '';
-    const stats = this.matchSimulator?.getMatchStats() || null;
+    const stats = fmState ? fmState.matchStats : (this.matchSimulator?.getMatchStats() || null);
     if (stats && stats.winnerTeamIndex !== -1) {
       const winnerManager = Array.from(this.managers.values()).find((m) => m.teamIndex === stats.winnerTeamIndex);
       if (winnerManager) winnerNick = winnerManager.nickname;
@@ -531,12 +551,24 @@ export class TransferShowdownGame {
       auctionCompletedLots: this.auctionEngine ? this.auctionEngine.getCurrentLotIndex() : 0,
       managerTactics: tacticsObj,
       teamSynergies: synergies,
-      currentHighlight: this.currentHighlight,
+      currentHighlight: fmState?.currentHighlight || this.currentHighlight,
       highlightElapsedSec: this.highlightElapsedSec,
-      matchScore: this.matchScore,
-      currentMinute: this.currentMinute,
+      matchScore: fmState?.matchScore || this.matchScore,
+      currentMinute: fmState?.currentMinute || this.currentMinute,
       matchStats: stats,
-      winnerNickname: winnerNick
+      winnerNickname: winnerNick,
+      // FM Live State
+      pitchState: fmState?.pitchState,
+      liveTicker: fmState?.liveTicker,
+      timelineMarkers: fmState?.timelineMarkers,
+      activeShouts: fmState?.activeShouts,
+      managerMentality:
+        fmState?.managerMentality ||
+        ({
+          ...(m0 ? { [m0.sessionId]: t0?.mentality || 'balanced', 0: t0?.mentality || 'balanced' } : {}),
+          ...(m1 ? { [m1.sessionId]: t1?.mentality || 'balanced', 1: t1?.mentality || 'balanced' } : {})
+        } as any),
+      momentumHistory: fmState?.momentumHistory
     };
   }
 

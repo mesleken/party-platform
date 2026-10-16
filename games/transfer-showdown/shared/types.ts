@@ -82,7 +82,7 @@ export interface ManagerBudgetState {
   isBiddingLockedByLead?: boolean; // Rakiple kadro farkı >= 2 olduğu için kilitli mi
 }
 
-export type FormationType = '4-3-3' | '4-4-2' | '4-2-3-1' | '3-5-2';
+export type FormationType = '4-3-3' | '4-4-2' | '4-2-3-1' | '3-5-2' | '5-3-2' | '3-4-3' | '4-1-4-1';
 
 export type PlaystyleType = 'balanced' | 'possession' | 'counter' | 'high_press';
 
@@ -99,6 +99,7 @@ export interface FormationSlot {
 export interface ManagerTactics {
   formation: FormationType;
   playstyle: PlaystyleType;
+  mentality?: MentalityType; // Takım mentalitesi (varsayılan: balanced)
   defensiveLine: DefensiveLineType;
   lineup: Record<number, string>; // slotIndex -> cardId
   isReady: boolean;
@@ -112,6 +113,9 @@ export interface TeamSynergy {
   goalkeeping: number;
   chemistry: number;
   overall: number;
+  attackStars: 1 | 2 | 3;
+  midfieldStars: 1 | 2 | 3;
+  defenseStars: 1 | 2 | 3;
 }
 
 export type ShowdownPhase =
@@ -168,6 +172,96 @@ export interface MatchStats {
   winnerTeamIndex: 0 | 1 | -1; // -1 for draw
 }
 
+export type MentalityType = 'defensive' | 'balanced' | 'attacking' | 'all_out_attack';
+
+export type TouchlineShoutType =
+  | 'push_forward'
+  | 'tighten_up'
+  | 'play_creative'
+  | 'demand_more';
+
+export type MatchPlayPhase =
+  | 'KICK_OFF'
+  | 'BUILD_UP'
+  | 'MIDFIELD_BATTLE'
+  | 'WING_ATTACK'
+  | 'THROUGH_BALL'
+  | 'BOX_DANGER'
+  | 'SHOT_ON_GOAL'
+  | 'SET_PIECE_CORNER'
+  | 'GOAL_KICK'
+  | 'GOAL_CELEBRATION'
+  | 'FREE_KICK_OFFSIDE'
+  | 'THROW_IN'
+  | 'FREE_KICK'
+  | 'PENALTY_KICK'
+  | 'COUNTER_ATTACK';
+
+export interface PitchPlayerState {
+  id: string;
+  cardId?: string;
+  slotIndex: number;
+  role: string;
+  name: string;
+  shortName: string;
+  number: number;
+  position: CardPosition;
+  teamIndex: 0 | 1;
+  baseX: number;
+  baseY: number;
+  x: number;       // 0..100
+  y: number;       // 0..64
+  targetX: number; // 0..100
+  targetY: number; // 0..64
+  stamina: number; // 0..100
+  rating: number;  // 5.0..10.0
+  goals: number;
+  assists: number;
+  yellowCard?: boolean;
+  action: 'IDLE' | 'CARRY' | 'PASS' | 'SPRINT_RUN' | 'PRESS' | 'TACKLE' | 'SHOOT' | 'GK_DIVE' | 'INTERCEPT' | 'SUPPORT';
+  photoUrl?: string;
+  ovr: number;
+  stats?: PlayerCardStats;
+  vx?: number;
+  vy?: number;
+  heading?: number;
+  attackDirection?: 1 | -1;
+}
+
+export interface PitchBallState {
+  x: number;
+  y: number;
+  targetX: number;
+  targetY: number;
+  height: number;
+  carrierId: string | null;
+  possessionTeam: 0 | 1;
+  passType?: 'SHORT' | 'THROUGH' | 'CROSS' | 'LONG' | 'SHOT' | 'CLEARANCE';
+  isMoving: boolean;
+  flightProgress?: number;
+  flightDurationSec?: number;
+  vx?: number; // saha birimi / saniye (istemci tarafı tahmin yürütme için)
+  vy?: number;
+  flightRemainingSec?: number;
+}
+
+export interface LiveTickerMessage {
+  id: string;
+  minute: number;
+  second: number;
+  text: string;
+  teamIndex: 0 | 1 | -1;
+  type: 'NORMAL' | 'DANGER' | 'GOAL' | 'SAVE' | 'SHOUT' | 'EVENT';
+}
+
+export interface TimelineMarker {
+  minute: number;
+  second?: number;
+  type: 'GOAL' | 'CARD' | 'WOODWORK' | 'SAVE' | 'OFFSIDE' | 'SUB';
+  teamIndex: 0 | 1;
+  label: string;
+}
+
 export interface ShowdownSnapshot {
   phase: ShowdownPhase;
   phaseTimeLeft: number;
@@ -183,6 +277,22 @@ export interface ShowdownSnapshot {
   currentMinute: number;
   matchStats: MatchStats | null;
   winnerNickname: string;
+  // Football Manager (FM) Canlı Maç Motoru State'leri
+  pitchState?: {
+    players: PitchPlayerState[];
+    ball: PitchBallState;
+    phase: MatchPlayPhase;
+    matchSecond: number;
+    momentum: number; // -100 (Home dominance) to +100 (Away dominance)
+    isKeyHighlight: boolean;
+    offsideLineX?: number;
+    attackDirections?: [1 | -1, 1 | -1];
+  };
+  liveTicker?: LiveTickerMessage[];
+  timelineMarkers?: TimelineMarker[];
+  activeShouts?: Record<string, { shout: TouchlineShoutType; text: string; expiresAt: number }>;
+  managerMentality?: Record<string, MentalityType>;
+  momentumHistory?: number[];
 }
 
 export interface BidAction {
@@ -197,7 +307,19 @@ export interface PickCardAction {
 export interface TacticsSubmission {
   formation: FormationType;
   playstyle: PlaystyleType;
+  mentality?: MentalityType;
   defensiveLine: DefensiveLineType;
   lineup: Record<number, string>;
   isReady?: boolean;
 }
+
+export interface LiveTacticsAction {
+  mentality?: MentalityType;
+  playstyle?: PlaystyleType;
+  defensiveLine?: DefensiveLineType;
+}
+
+export interface ShoutAction {
+  shout: TouchlineShoutType;
+}
+

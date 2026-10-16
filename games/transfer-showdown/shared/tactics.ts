@@ -96,13 +96,55 @@ export function calculateTeamSynergy(
   const finalDef = Math.max(50, Math.min(99, defense + defMod));
   const overall = Math.round((finalAtt * 0.35 + finalMid * 0.3 + finalDef * 0.25 + goalkeeping * 0.1) * (0.85 + 0.15 * (chemistry / 100)));
 
+  const toStars = (val: number): 1 | 2 | 3 => {
+    if (val >= 83) return 3;
+    if (val >= 75) return 2;
+    return 1;
+  };
+
   return {
     attack: finalAtt,
     midfield: finalMid,
     defense: finalDef,
     goalkeeping,
     chemistry,
-    overall
+    overall,
+    attackStars: toStars(finalAtt),
+    midfieldStars: toStars(finalMid),
+    defenseStars: toStars(finalDef)
+  };
+}
+
+export function toStarSymbols(stars: 1 | 2 | 3): string {
+  if (stars === 3) return '★★★';
+  if (stars === 2) return '★★☆';
+  return '★☆☆';
+}
+
+export function adjustComparativeStars(
+  syn0: TeamSynergy,
+  syn1: TeamSynergy
+): { team0: TeamSynergy; team1: TeamSynergy } {
+  const adjustLine = (val0: number, val1: number, stars0: 1 | 2 | 3, stars1: 1 | 2 | 3): [1 | 2 | 3, 1 | 2 | 3] => {
+    let s0 = stars0;
+    let s1 = stars1;
+    if (val0 - val1 >= 5 && s0 <= s1) {
+      s0 = Math.min(3, s1 + 1) as 1 | 2 | 3;
+      if (s0 === s1) s1 = Math.max(1, s0 - 1) as 1 | 2 | 3;
+    } else if (val1 - val0 >= 5 && s1 <= s0) {
+      s1 = Math.min(3, s0 + 1) as 1 | 2 | 3;
+      if (s1 === s0) s0 = Math.max(1, s1 - 1) as 1 | 2 | 3;
+    }
+    return [s0, s1];
+  };
+
+  const [att0, att1] = adjustLine(syn0.attack, syn1.attack, syn0.attackStars, syn1.attackStars);
+  const [mid0, mid1] = adjustLine(syn0.midfield, syn1.midfield, syn0.midfieldStars, syn1.midfieldStars);
+  const [def0, def1] = adjustLine(syn0.defense, syn1.defense, syn0.defenseStars, syn1.defenseStars);
+
+  return {
+    team0: { ...syn0, attackStars: att0, midfieldStars: mid0, defenseStars: def0 },
+    team1: { ...syn1, attackStars: att1, midfieldStars: mid1, defenseStars: def1 }
   };
 }
 

@@ -6,6 +6,7 @@ import {
   checkPositionAffinity,
   autoAssignLineup,
   calculateTeamSynergy,
+  toStarSymbols,
   type BidAction,
   type DefensiveLineType,
   type FormationType,
@@ -14,7 +15,9 @@ import {
   type PlayerCard,
   type PlaystyleType,
   type ShowdownSnapshot,
-  type TacticsSubmission
+  type TacticsSubmission,
+  type MentalityType,
+  type TouchlineShoutType
 } from '@games/transfer-showdown';
 
 interface Props {
@@ -77,6 +80,7 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
   const [selectedFormation, setSelectedFormation] = useState<FormationType>('4-3-3');
   const [selectedPlaystyle, setSelectedPlaystyle] = useState<PlaystyleType>('balanced');
   const [selectedDefLine, setSelectedDefLine] = useState<DefensiveLineType>('balanced');
+  const [selectedMentality, setSelectedMentality] = useState<MentalityType>('balanced');
   const [lineup, setLineup] = useState<Record<number, string>>({});
   const [tacticsConfirmed, setTacticsConfirmed] = useState(false);
   const [hasInitializedTactics, setHasInitializedTactics] = useState(false);
@@ -87,10 +91,28 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
   const [allOutUsed, setAllOutUsed] = useState(false);
   const [activePackCardTab, setActivePackCardTab] = useState<number>(0); // 0=GK, 1=DEF, 2=MID, 3=FWD
   const [activeDugoutShout, setActiveDugoutShout] = useState<string | null>(null);
+  const [matchActiveTab, setMatchActiveTab] = useState<'tactics' | 'squad' | 'log'>('tactics');
+  const [shoutCooldown, setShoutCooldown] = useState(0);
+
+  useEffect(() => {
+    if (shoutCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setShoutCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [shoutCooldown]);
 
   useEffect(() => {
     const handleSnapshot = (snap: ShowdownSnapshot) => {
       setSnapshot(snap);
+
+      const serverMentality =
+        snap.managerMentality?.[playerId] ||
+        (snap.managers?.[playerId] ? snap.managerMentality?.[snap.managers[playerId].teamIndex] : undefined) ||
+        snap.managerTactics?.[playerId]?.mentality;
+      if (serverMentality) {
+        setSelectedMentality(serverMentality);
+      }
 
       // Taktik aşamasına geçildiğinde SADECE İLK KEZ state'i sunucudan al (200ms reset bug fix)
       if (snap.phase === 'TACTICS' || snap.phase === 'HALFTIME') {
@@ -100,6 +122,7 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
           setSelectedFormation(myTac.formation);
           setSelectedPlaystyle(myTac.playstyle);
           setSelectedDefLine(myTac.defensiveLine);
+          if (myTac.mentality) setSelectedMentality(myTac.mentality);
 
           // Eğer lineup boşsa otomatik doldur
           if (myTac.lineup && Object.keys(myTac.lineup).length > 0) {
@@ -185,12 +208,14 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
     playstyle: PlaystyleType,
     defLine: DefensiveLineType,
     newLineup: Record<number, string>,
-    ready = false
+    ready = false,
+    mentality: MentalityType = selectedMentality
   ) => {
     const submission: TacticsSubmission = {
       formation,
       playstyle,
       defensiveLine: defLine,
+      mentality,
       lineup: newLineup,
       isReady: ready
     };
@@ -206,19 +231,25 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
       updatedLineup = autoAssignLineup(f, myManager.cards);
       setLineup(updatedLineup);
     }
-    broadcastTacticsChange(f, selectedPlaystyle, selectedDefLine, updatedLineup, false);
+    broadcastTacticsChange(f, selectedPlaystyle, selectedDefLine, updatedLineup, false, selectedMentality);
   };
 
   // Oyun Stili Değiştirme
   const handleSelectPlaystyle = (p: PlaystyleType) => {
     setSelectedPlaystyle(p);
-    broadcastTacticsChange(selectedFormation, p, selectedDefLine, lineup, false);
+    broadcastTacticsChange(selectedFormation, p, selectedDefLine, lineup, false, selectedMentality);
   };
 
   // Savunma Çizgisi Değiştirme
   const handleSelectDefLine = (d: DefensiveLineType) => {
     setSelectedDefLine(d);
-    broadcastTacticsChange(selectedFormation, selectedPlaystyle, d, lineup, false);
+    broadcastTacticsChange(selectedFormation, selectedPlaystyle, d, lineup, false, selectedMentality);
+  };
+
+  // Takım Mentalitesi Değiştirme (Taktik Ekranı)
+  const handleSelectMentality = (m: MentalityType) => {
+    setSelectedMentality(m);
+    broadcastTacticsChange(selectedFormation, selectedPlaystyle, selectedDefLine, lineup, false, m);
   };
 
   // Slot Tıklama: Oyuncu Seçim Çekmecesi Aç
@@ -248,13 +279,13 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
     updatedLineup[selectedSlotIndex] = cardId;
     setLineup(updatedLineup);
     setSelectedSlotIndex(null);
-    broadcastTacticsChange(selectedFormation, selectedPlaystyle, selectedDefLine, updatedLineup, false);
+    broadcastTacticsChange(selectedFormation, selectedPlaystyle, selectedDefLine, updatedLineup, false, selectedMentality);
   };
 
   // Taktik Onaylama
   const handleConfirmTactics = () => {
     if (!myManager) return;
-    broadcastTacticsChange(selectedFormation, selectedPlaystyle, selectedDefLine, lineup, true);
+    broadcastTacticsChange(selectedFormation, selectedPlaystyle, selectedDefLine, lineup, true, selectedMentality);
     setTacticsConfirmed(true);
   };
 
@@ -263,19 +294,36 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
     sdk.send('SHOWDOWN_HALFTIME', {
       formation: selectedFormation,
       playstyle: selectedPlaystyle,
-      defensiveLine: selectedDefLine
+      defensiveLine: selectedDefLine,
+      mentality: selectedMentality
     });
     setTacticsConfirmed(true);
   };
 
   // FM Taktik Seslenişi (Dug-out shout)
-  const handleDugoutShout = (shout: string) => {
-    setActiveDugoutShout(shout);
-    setTimeout(() => setActiveDugoutShout(null), 3000);
+  const handleDugoutShout = (shout: TouchlineShoutType, label: string) => {
+    if (shoutCooldown > 0) return;
+    sdk.send('SHOWDOWN_SHOUT', { shout });
+    setActiveDugoutShout(label);
+    setShoutCooldown(15);
+    setTimeout(() => setActiveDugoutShout(null), 3500);
+  };
+
+  // FM Canlı Mentalite Değişimi
+  const handleLiveMentality = (mentality: MentalityType) => {
+    setSelectedMentality(mentality);
+    sdk.send('SHOWDOWN_LIVE_TACTICS', { mentality });
+  };
+
+  // FM Canlı Oyun Tarzı Değişimi
+  const handleLivePlaystyle = (playstyle: PlaystyleType) => {
+    setSelectedPlaystyle(playstyle);
+    sdk.send('SHOWDOWN_LIVE_TACTICS', { playstyle });
   };
 
   // Son 15 Dakika Agresif Oyna
   const handleAllOutAttack = () => {
+    handleLiveMentality('all_out_attack');
     sdk.send('SHOWDOWN_ALL_OUT_ATTACK', {});
     setAllOutUsed(true);
   };
@@ -302,7 +350,7 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
         {/* Üst Yönetici Bilgi Çubuğu */}
         <div style={{
           background: 'linear-gradient(180deg, #1e293b, #0f172a)',
-          padding: '10px 14px',
+          padding: 'calc(10px + env(safe-area-inset-top, 0px)) 14px 10px 14px',
           borderBottom: '1px solid #334155',
           display: 'flex',
           justifyContent: 'space-between',
@@ -428,12 +476,11 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
                             <PlayerAvatar url={card.photoUrl} name={card.name} flag={card.countryFlag} size={42} />
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontSize: '15px', fontWeight: 900, color: '#f59e0b' }}>{card.ovr}</span>
-                                <span style={{ fontSize: '10px', fontWeight: 800, color: '#38bdf8' }}>{card.position}</span>
+                                <span style={{ fontSize: '11px', fontWeight: 900, color: '#38bdf8', background: '#0284c725', padding: '2px 6px', borderRadius: '4px' }}>{card.position}</span>
                                 <span style={{ fontSize: '13px', fontWeight: 800, color: '#fff' }}>{card.name}</span>
                               </div>
                               <div style={{ fontSize: '10px', color: '#94a3b8' }}>
-                                {card.countryFlag} {card.club} • {card.specificRole}
+                                {card.countryFlag} {card.nationality} • {card.specificRole}
                               </div>
                             </div>
                           </div>
@@ -508,8 +555,8 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
                           alignItems: 'center'
                         }}
                       >
-                        <span style={{ fontSize: '9px', opacity: 0.8 }}>{c.position}</span>
-                        <span style={{ color: activePackCardTab === idx ? '#facc15' : '#cbd5e1' }}>{c.ovr}</span>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: activePackCardTab === idx ? '#facc15' : '#cbd5e1' }}>{c.position}</span>
+                        <span style={{ fontSize: '9px', opacity: 0.8, color: '#94a3b8' }}>{c.specificRole || c.position}</span>
                       </button>
                     ))}
                   </div>
@@ -530,59 +577,48 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
                             {previewCard.name}
                           </div>
                           <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                            {previewCard.countryFlag} {previewCard.club} • {previewCard.specificRole}
+                            {previewCard.countryFlag} {previewCard.nationality} • {previewCard.specificRole}
                           </div>
                         </div>
 
                         <div style={{
                           background: '#0f172a',
                           borderRadius: '10px',
-                          padding: '4px 10px',
+                          padding: '6px 12px',
                           textAlign: 'center',
                           border: '1px solid #334155'
                         }}>
-                          <div style={{ fontSize: '20px', fontWeight: 900, color: '#f59e0b', lineHeight: 1 }}>
-                            {previewCard.ovr}
-                          </div>
-                          <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 700 }}>
+                          <div style={{ fontSize: '15px', fontWeight: 900, color: '#38bdf8', lineHeight: 1 }}>
                             {previewCard.position}
+                          </div>
+                          <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 700, marginTop: '2px' }}>
+                            {previewCard.specificRole}
                           </div>
                         </div>
                       </div>
 
-                      {/* 6 Yetenek İstatistiği */}
+                      {/* Oyuncu Bilgileri */}
                       <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(6, 1fr)',
-                        gap: '4px',
+                        display: 'flex',
+                        justifyContent: 'space-around',
+                        alignItems: 'center',
                         marginTop: '10px',
                         background: '#090d16',
-                        padding: '6px',
-                        borderRadius: '6px'
+                        padding: '8px',
+                        borderRadius: '8px',
+                        border: '1px solid #1e293b'
                       }}>
                         <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 700 }}>HIZ</div>
-                          <div style={{ fontSize: '12px', fontWeight: 800 }}>{previewCard.stats.pac}</div>
+                          <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 700 }}>POZİSYON</div>
+                          <div style={{ fontSize: '12px', fontWeight: 800, color: '#38bdf8' }}>{previewCard.position}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 700 }}>ŞUT</div>
-                          <div style={{ fontSize: '12px', fontWeight: 800 }}>{previewCard.stats.sho}</div>
+                          <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 700 }}>ROL</div>
+                          <div style={{ fontSize: '12px', fontWeight: 800, color: '#facc15' }}>{previewCard.specificRole}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 700 }}>PAS</div>
-                          <div style={{ fontSize: '12px', fontWeight: 800 }}>{previewCard.stats.pas}</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 700 }}>DRİ</div>
-                          <div style={{ fontSize: '12px', fontWeight: 800 }}>{previewCard.stats.dri}</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 700 }}>DEF</div>
-                          <div style={{ fontSize: '12px', fontWeight: 800 }}>{previewCard.stats.def}</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 700 }}>FİZ</div>
-                          <div style={{ fontSize: '12px', fontWeight: 800 }}>{previewCard.stats.phy}</div>
+                          <div style={{ fontSize: '8px', color: '#64748b', fontWeight: 700 }}>ÜLKE</div>
+                          <div style={{ fontSize: '12px', fontWeight: 800, color: '#fff' }}>{previewCard.countryFlag} {previewCard.nationality}</div>
                         </div>
                       </div>
                     </div>
@@ -660,7 +696,7 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
         {!currentLot?.isPickingPlayer && (
           <div style={{
             background: '#0f172a',
-            padding: '10px 14px',
+            padding: '10px 14px calc(12px + env(safe-area-inset-bottom, 0px)) 14px',
             borderTop: '1px solid #1e293b',
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
@@ -675,11 +711,13 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
                   : 'linear-gradient(135deg, #10b981, #059669)',
                 color: '#fff',
                 border: 'none',
+                minHeight: '46px',
                 padding: '12px',
                 borderRadius: '10px',
                 fontSize: '15px',
                 fontWeight: 800,
                 cursor: 'pointer',
+                touchAction: 'manipulation',
                 opacity: !isAffordablePlus1 || isHighestBidder || myManager?.hasPassedCurrentLot || isBidLocked ? 0.5 : 1
               }}
             >
@@ -695,11 +733,13 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
                   : 'linear-gradient(135deg, #0284c7, #0369a1)',
                 color: '#fff',
                 border: 'none',
+                minHeight: '46px',
                 padding: '12px',
                 borderRadius: '10px',
                 fontSize: '15px',
                 fontWeight: 800,
                 cursor: 'pointer',
+                touchAction: 'manipulation',
                 opacity: !isAffordablePlus5 || isHighestBidder || myManager?.hasPassedCurrentLot || isBidLocked ? 0.5 : 1
               }}
             >
@@ -716,11 +756,13 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
                   : (currentLot?.highestBidderId && !isHighestBidder ? 'linear-gradient(135deg, #f97316, #ea580c)' : '#475569'),
                 color: '#fff',
                 border: 'none',
+                minHeight: '44px',
                 padding: '10px',
                 borderRadius: '8px',
                 fontSize: '13px',
                 fontWeight: 800,
                 cursor: 'pointer',
+                touchAction: 'manipulation',
                 opacity: myManager?.hasPassedCurrentLot ? 0.6 : 1
               }}
             >
@@ -742,7 +784,7 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
             zIndex: 100,
             display: 'flex',
             flexDirection: 'column',
-            padding: '16px'
+            padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>KADROM ({myManager?.cards.length || 0}/11)</h3>
@@ -770,13 +812,14 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: 800 }}>{c.name}</div>
                       <div style={{ fontSize: '10px', color: '#94a3b8' }}>
-                        {c.countryFlag} {c.club} • {c.specificRole}
+                        {c.countryFlag} {c.nationality} • {c.specificRole}
                       </div>
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '16px', fontWeight: 900, color: '#f59e0b' }}>{c.ovr}</div>
-                    <div style={{ fontSize: '9px', color: '#94a3b8' }}>{c.position}</div>
+                    <span style={{ fontSize: '11px', fontWeight: 900, color: '#38bdf8', background: '#0284c725', padding: '3px 8px', borderRadius: '6px' }}>
+                      {c.position}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -827,7 +870,7 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
         {/* Üst Başlık & Kalan Süre */}
         <div style={{
           background: 'linear-gradient(180deg, #0f172a, #070d18)',
-          padding: '8px 14px',
+          padding: 'calc(8px + env(safe-area-inset-top, 0px)) 14px 8px 14px',
           borderBottom: '1px solid #1e293b',
           display: 'flex',
           justifyContent: 'space-between',
@@ -852,7 +895,7 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
           </div>
         </div>
 
-        {/* Canlı Takım Reyting ve Kimya Göstergesi */}
+        {/* Canlı Takım Reyting ve Kimya Göstergesi (3 Yıldız Sistemi) */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(4, 1fr)',
@@ -865,15 +908,21 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
         }}>
           <div>
             <span style={{ color: '#94a3b8', fontSize: '9px' }}>HÜCUM</span>
-            <div style={{ fontWeight: 900, color: '#38bdf8' }}>{liveSynergy.attack}</div>
+            <div style={{ fontWeight: 900, color: '#facc15', fontSize: '13px', letterSpacing: '1px' }}>
+              {toStarSymbols(liveSynergy.attackStars || 2)}
+            </div>
           </div>
           <div>
             <span style={{ color: '#94a3b8', fontSize: '9px' }}>ORTA SAHA</span>
-            <div style={{ fontWeight: 900, color: '#38bdf8' }}>{liveSynergy.midfield}</div>
+            <div style={{ fontWeight: 900, color: '#facc15', fontSize: '13px', letterSpacing: '1px' }}>
+              {toStarSymbols(liveSynergy.midfieldStars || 2)}
+            </div>
           </div>
           <div>
             <span style={{ color: '#94a3b8', fontSize: '9px' }}>SAVUNMA</span>
-            <div style={{ fontWeight: 900, color: '#38bdf8' }}>{liveSynergy.defense}</div>
+            <div style={{ fontWeight: 900, color: '#facc15', fontSize: '13px', letterSpacing: '1px' }}>
+              {toStarSymbols(liveSynergy.defenseStars || 2)}
+            </div>
           </div>
           <div>
             <span style={{ color: '#94a3b8', fontSize: '9px' }}>KİMYA</span>
@@ -884,21 +933,23 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
         {/* Taktik Ayarları: Formasyon, Oyun Stili & Çizgi */}
         <div style={{ padding: '6px 10px', background: '#0b1120', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {/* Formasyon Butonları */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
-            {(['4-3-3', '4-4-2', '4-2-3-1', '3-5-2'] as FormationType[]).map((f) => (
+          <div style={{ display: 'flex', overflowX: 'auto', gap: '5px', paddingBottom: '2px', scrollbarWidth: 'none' }}>
+            {(['4-3-3', '4-4-2', '4-2-3-1', '5-3-2', '3-5-2', '3-4-3', '4-1-4-1'] as FormationType[]).map((f) => (
               <button
                 key={f}
                 disabled={tacticsConfirmed}
                 onClick={() => handleSelectFormation(f)}
                 style={{
+                  flex: '0 0 auto',
                   background: selectedFormation === f ? '#0284c7' : '#1e293b',
                   color: '#fff',
                   border: selectedFormation === f ? '1.5px solid #38bdf8' : '1px solid #334155',
-                  padding: '5px 2px',
+                  padding: '6px 10px',
                   borderRadius: '6px',
                   fontWeight: 800,
                   fontSize: '11px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 {f}
@@ -946,6 +997,40 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
               <option value="low">🛡️ Hat: Alçak Savunma</option>
               <option value="high">⚔️ Hat: Yüksek Savunma</option>
             </select>
+          </div>
+
+          {/* Takım Mentalitesi Seçici */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
+            {([
+              { id: 'defensive', label: '🛡️ Savunma' },
+              { id: 'balanced', label: '⚖️ Dengeli' },
+              { id: 'attacking', label: '⚔️ Hücum' },
+              { id: 'all_out_attack', label: '🚨 Tam Saha' }
+            ] as const).map((m) => {
+              const isActive = selectedMentality === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  disabled={tacticsConfirmed}
+                  onClick={() => handleSelectMentality(m.id)}
+                  style={{
+                    background: isActive ? 'linear-gradient(135deg, #0284c7, #0369a1)' : '#1e293b',
+                    color: isActive ? '#fff' : '#94a3b8',
+                    border: isActive ? '1.5px solid #38bdf8' : '1px solid #334155',
+                    borderRadius: '6px',
+                    padding: '5px 4px',
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    cursor: tacticsConfirmed ? 'default' : 'pointer',
+                    whiteSpace: 'nowrap',
+                    boxShadow: isActive ? '0 0 8px rgba(56, 189, 248, 0.35)' : 'none'
+                  }}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -1020,9 +1105,9 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
                     boxShadow: isSelected ? '0 0 15px #facc15' : '0 2px 6px rgba(0,0,0,0.5)',
                     transition: 'all 0.2s ease'
                   }}>
-                    {/* Kart Üst Başlık (OVR ve Rol) */}
+                    {/* Kart Üst Başlık (Pozisyon ve Rol) */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', padding: '0 2px' }}>
-                      <span style={{ fontSize: '9px', fontWeight: 900, color: '#f59e0b', lineHeight: 1 }}>{assignedCard.ovr}</span>
+                      <span style={{ fontSize: '8px', fontWeight: 900, color: '#38bdf8', lineHeight: 1 }}>{assignedCard.position}</span>
                       <span style={{ fontSize: '8px', fontWeight: 800, color: '#60a5fa', lineHeight: 1 }}>{slot.role}</span>
                     </div>
 
@@ -1068,7 +1153,11 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
         </div>
 
         {/* Onay Butonu & Rakip Hazır Durumu */}
-        <div style={{ padding: '8px 12px', background: '#090d16', borderTop: '1px solid #1e293b' }}>
+        <div style={{
+          padding: '8px 12px calc(12px + env(safe-area-inset-bottom, 0px)) 12px',
+          background: '#090d16',
+          borderTop: '1px solid #1e293b'
+        }}>
           {rivalManager && (
             <div style={{
               display: 'flex',
@@ -1095,6 +1184,7 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
             disabled={tacticsConfirmed}
             style={{
               width: '100%',
+              minHeight: '48px',
               background: tacticsConfirmed ? '#334155' : 'linear-gradient(135deg, #10b981, #059669)',
               color: '#fff',
               border: 'none',
@@ -1102,7 +1192,8 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
               borderRadius: '10px',
               fontSize: '14px',
               fontWeight: 900,
-              cursor: tacticsConfirmed ? 'default' : 'pointer'
+              cursor: tacticsConfirmed ? 'default' : 'pointer',
+              touchAction: 'manipulation'
             }}
           >
             {tacticsConfirmed
@@ -1127,8 +1218,8 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
               borderTop: '2px solid #38bdf8',
               borderTopLeftRadius: '16px',
               borderTopRightRadius: '16px',
-              padding: '14px',
-              maxHeight: '65%',
+              padding: '14px 14px calc(16px + env(safe-area-inset-bottom, 0px)) 14px',
+              maxHeight: '75%',
               display: 'flex',
               flexDirection: 'column'
             }}>
@@ -1172,12 +1263,11 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
                         <PlayerAvatar url={c.photoUrl} name={c.name} flag={c.countryFlag} size={36} />
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: 900, color: '#f59e0b' }}>{c.ovr}</span>
-                            <span style={{ fontSize: '10px', fontWeight: 800, color: '#38bdf8' }}>{c.position}</span>
+                            <span style={{ fontSize: '10px', fontWeight: 800, color: '#38bdf8', background: '#0284c725', padding: '2px 6px', borderRadius: '4px' }}>{c.position}</span>
                             <span style={{ fontSize: '13px', fontWeight: 800, color: '#fff' }}>{c.name}</span>
                           </div>
                           <div style={{ fontSize: '10px', color: '#94a3b8' }}>
-                            {c.countryFlag} {c.club}
+                            {c.countryFlag} {c.nationality} • {c.specificRole}
                           </div>
                         </div>
                       </div>
@@ -1213,12 +1303,44 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
   // RENDER: PHASE 3 - MATCH (FOOTBALL MANAGER - FM STİLİ)
   // ==========================================
   if (snapshot.phase === 'MATCH_FIRST_HALF' || snapshot.phase === 'MATCH_SECOND_HALF' || snapshot.phase === 'HALFTIME') {
-    const isLateGame = snapshot.currentMinute >= 75;
+    const matchSec = snapshot.pitchState?.matchSecond ?? (snapshot.currentMinute * 60);
+    const min = Math.floor(matchSec / 60);
+    const sec = matchSec % 60;
+    const clockStr = snapshot.phase === 'HALFTIME'
+      ? "DEVRE ARASI (45')"
+      : `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    const isLateGame = min >= 75;
+
     const managers = Object.values(snapshot.managers || {});
     const m0 = managers.find((m) => m.teamIndex === 0) || managers[0];
     const m1 = managers.find((m) => m.teamIndex === 1) || managers[1];
-
     const currentScore = snapshot.matchScore || [0, 0];
+    const myTeamIdx = myManager?.teamIndex ?? 0;
+    const currentMentality: MentalityType =
+      selectedMentality ||
+      (snapshot.managerMentality ? (snapshot.managerMentality[playerId] || snapshot.managerMentality[myTeamIdx]) : undefined) ||
+      'balanced';
+
+    const phaseNames: Record<string, string> = {
+      KICK_OFF: 'BAŞLAMA VURUŞU',
+      BUILD_UP: 'GERİDEN OYUN KURMA',
+      MIDFIELD_BATTLE: 'ORTA SAHA MÜCADELESİ',
+      WING_ATTACK: 'KANAT AKINI',
+      THROUGH_BALL: 'SAVUNMA ARKASINA PAS',
+      BOX_DANGER: 'CEZA SAHASINDA TEHLİKE',
+      SHOT_ON_GOAL: 'ŞUT POZİSYONU',
+      GOAL_CELEBRATION: 'GOOOL KUTLAMASI 🎉',
+      SET_PIECE_CORNER: 'KÖŞE VURUŞU (KORNER)',
+      SET_PIECE_FREEKICK: 'SERBEST VURUŞ',
+      GOAL_KICK: 'AUT / KALECİ DEGAJI'
+    };
+
+    const currentPhaseLabel = snapshot.pitchState?.phase
+      ? (phaseNames[snapshot.pitchState.phase] || snapshot.pitchState.phase.replace(/_/g, ' '))
+      : (snapshot.phase === 'HALFTIME' ? 'DEVRE ARASI' : 'CANLI OYUN');
+
+    const pitchPlayers = snapshot.pitchState?.players || [];
+    const mySquadCards = myManager?.cards || [];
 
     return (
       <div style={{
@@ -1233,14 +1355,25 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
         {/* FM TV Scoreboard Header */}
         <div style={{
           background: 'linear-gradient(180deg, #0b1120, #070d18)',
-          padding: '12px 16px',
-          borderBottom: '2px solid #1e293b'
+          padding: 'calc(10px + env(safe-area-inset-top, 0px)) 14px 10px 14px',
+          borderBottom: '1px solid #1e293b'
         }}>
-          {/* FM Digital Match Clock */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          {/* Üst Canlı Çubuk */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }} />
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#10b981', textTransform: 'uppercase' }}>CANLI MAÇ MERKEZİ</span>
+              <span style={{ fontSize: '10px', fontWeight: 900, color: '#10b981', letterSpacing: '0.5px' }}>FM DÜELLO</span>
+              <span style={{
+                background: '#1e293b',
+                color: '#38bdf8',
+                fontSize: '9px',
+                fontWeight: 800,
+                padding: '2px 6px',
+                borderRadius: '4px',
+                border: '1px solid #334155'
+              }}>
+                {currentPhaseLabel}
+              </span>
             </div>
             <div style={{
               background: '#0284c725',
@@ -1249,239 +1382,513 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
               borderRadius: '6px',
               fontSize: '13px',
               fontWeight: 900,
+              fontFamily: 'monospace',
               color: '#38bdf8'
             }}>
-              {snapshot.phase === 'HALFTIME' ? 'DEVRE ARASI (45\')' : `${snapshot.currentMinute}' : 00"`}
+              ⏱️ {clockStr}
             </div>
           </div>
 
-          {/* Skor */}
+          {/* Skor Kutusu */}
           <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
             <div style={{ textAlign: 'center', flex: 1 }}>
-              <div style={{ fontSize: '13px', fontWeight: 900, color: '#38bdf8' }}>{m0?.nickname || 'TAKIM A'}</div>
-              <div style={{ fontSize: '32px', fontWeight: 900, lineHeight: 1, marginTop: '2px' }}>{currentScore[0]}</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#38bdf8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {m0?.nickname || 'TAKIM A'} {myTeamIdx === 0 && '👑'}
+              </div>
+              <div style={{ fontSize: '28px', fontWeight: 900, lineHeight: 1, marginTop: '2px' }}>{currentScore[0]}</div>
             </div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#475569' }}>VS</div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#475569' }}>-</div>
             <div style={{ textAlign: 'center', flex: 1 }}>
-              <div style={{ fontSize: '13px', fontWeight: 900, color: '#f59e0b' }}>{m1?.nickname || 'TAKIM B'}</div>
-              <div style={{ fontSize: '32px', fontWeight: 900, lineHeight: 1, marginTop: '2px' }}>{currentScore[1]}</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#f59e0b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {m1?.nickname || 'TAKIM B'} {myTeamIdx === 1 && '👑'}
+              </div>
+              <div style={{ fontSize: '28px', fontWeight: 900, lineHeight: 1, marginTop: '2px' }}>{currentScore[1]}</div>
             </div>
           </div>
         </div>
 
-        {/* FM Live Momentum & Statistics */}
-        <div style={{ padding: '10px 14px', background: '#090e1a', borderBottom: '1px solid #1e293b' }}>
-          {/* Topla Oynama */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, marginBottom: '3px' }}>
-            <span style={{ color: '#38bdf8' }}>%{snapshot.matchStats ? snapshot.matchStats.possession[0] : 50}</span>
-            <span style={{ color: '#94a3b8', fontSize: '9px' }}>TOPLA OYNAMA</span>
-            <span style={{ color: '#f59e0b' }}>%{snapshot.matchStats ? snapshot.matchStats.possession[1] : 50}</span>
+        {/* Kulübe Sesleniş Bildirim Çubuğu */}
+        {activeDugoutShout && (
+          <div style={{
+            background: 'linear-gradient(90deg, #0284c7, #2563eb)',
+            color: '#fff',
+            padding: '6px 12px',
+            fontSize: '11px',
+            fontWeight: 800,
+            textAlign: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            boxShadow: '0 2px 10px rgba(2, 132, 199, 0.4)'
+          }}>
+            <span>📢</span>
+            <span>Kulübeden Seslenildi: <b>"{activeDugoutShout}"</b></span>
           </div>
-          <div style={{ height: '5px', background: '#1e293b', borderRadius: '3px', overflow: 'hidden', display: 'flex', marginBottom: '8px' }}>
-            <div style={{ width: `${snapshot.matchStats ? snapshot.matchStats.possession[0] : 50}%`, background: '#38bdf8' }} />
-            <div style={{ width: `${snapshot.matchStats ? snapshot.matchStats.possession[1] : 50}%`, background: '#f59e0b' }} />
-          </div>
+        )}
 
-          {/* xG Beklenen Gol */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800 }}>
-            <span style={{ color: '#38bdf8' }}>xG: {snapshot.matchStats ? snapshot.matchStats.xg[0] : '0.00'}</span>
-            <span style={{ color: '#94a3b8', fontSize: '9px' }}>BEKLENEN GOL (xG)</span>
-            <span style={{ color: '#f59e0b' }}>xG: {snapshot.matchStats ? snapshot.matchStats.xg[1] : '0.00'}</span>
-          </div>
-        </div>
-
-        {/* FM Play-by-Play Spiker ve Olay Akışı */}
-        <div style={{ flex: 1, padding: '12px 14px', overflowY: 'auto' }}>
-          {snapshot.currentHighlight ? (
-            <div style={{
-              background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-              border: '2px solid #38bdf8',
-              borderRadius: '12px',
-              padding: '12px',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-              marginBottom: '10px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <span style={{
-                  background: snapshot.currentHighlight.type === 'GOAL' ? '#10b981' : (snapshot.currentHighlight.type === 'SAVE' ? '#2563eb' : '#f59e0b'),
-                  color: '#fff',
-                  fontSize: '10px',
-                  fontWeight: 900,
-                  padding: '2px 8px',
-                  borderRadius: '6px'
-                }}>
-                  {snapshot.currentHighlight.type === 'GOAL' ? '⚽ GOOOL!' : (snapshot.currentHighlight.type === 'SAVE' ? '🧤 KURTARIŞ' : '💥 POZİSYON')}
-                </span>
-                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 700 }}>
-                  Dakika {snapshot.currentHighlight.minute}'
-                </span>
-              </div>
-              <div style={{ fontSize: '14px', fontWeight: 800, color: '#f8fafc', lineHeight: 1.3 }}>
-                {snapshot.currentHighlight.commentary}
-              </div>
-              {snapshot.currentHighlight.subText && (
-                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
-                  {snapshot.currentHighlight.subText}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>
-              Pozisyon gelişiyor...
-            </div>
-          )}
-
-          {/* Devre Arası Taktik Ayarları */}
-          {snapshot.phase === 'HALFTIME' && (
-            <div style={{
-              background: '#1e293b',
-              borderRadius: '12px',
-              padding: '12px',
-              border: '1px solid #f59e0b',
-              marginTop: '10px'
-            }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#f59e0b', marginBottom: '6px' }}>
-                ☕ SOYUNMA ODASI TALİMATI (Kalan: {snapshot.phaseTimeLeft}s)
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginBottom: '8px' }}>
-                {(['balanced', 'possession', 'counter', 'high_press'] as PlaystyleType[]).map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => setSelectedPlaystyle(st)}
-                    style={{
-                      background: selectedPlaystyle === st ? '#10b981' : '#0f172a',
-                      color: '#fff',
-                      border: 'none',
-                      padding: '6px',
-                      borderRadius: '6px',
-                      fontSize: '10px',
-                      fontWeight: 800
-                    }}
-                  >
-                    {st.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={handleHalftimeAdjustment}
-                style={{
-                  width: '100%',
-                  background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '8px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: 900
-                }}
-              >
-                2. Yarı Talimatını Ver 🚀
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* FM Dug-out Menajer Taktik Seslenişleri */}
+        {/* FM Touchline Tablet Sekme Çubuğu */}
         <div style={{
-          background: '#0b1120',
-          padding: '10px 14px',
-          borderTop: '1px solid #1e293b',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '6px'
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          background: '#0b1329',
+          borderBottom: '2px solid #1e293b',
+          padding: '4px'
         }}>
-          <div style={{ fontSize: '9px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
-            FM KULÜBE TALİMATLARI (DUG-OUT SHOUTS)
-          </div>
-
-          {activeDugoutShout && (
-            <div style={{
-              background: '#0284c725',
-              border: '1px solid #0284c7',
-              color: '#38bdf8',
-              padding: '4px 8px',
+          <button
+            onClick={() => setMatchActiveTab('tactics')}
+            style={{
+              background: matchActiveTab === 'tactics' ? 'linear-gradient(135deg, #0284c7, #0369a1)' : 'transparent',
+              color: matchActiveTab === 'tactics' ? '#fff' : '#94a3b8',
+              border: 'none',
+              padding: '8px 4px',
               borderRadius: '6px',
               fontSize: '11px',
               fontWeight: 800,
-              textAlign: 'center'
-            }}>
-              📣 Takıma iletildi: "{activeDugoutShout}"
-            </div>
-          )}
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '2px',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>⚡ Taktikler</span>
+            <span style={{ fontSize: '8px', opacity: 0.8 }}>& Seslenişler</span>
+          </button>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-            <button
-              onClick={() => handleDugoutShout('Daha Fazla Baskı!')}
-              style={{
-                background: '#1e293b',
-                color: '#fff',
-                border: '1px solid #334155',
-                padding: '8px 4px',
-                borderRadius: '8px',
-                fontSize: '10px',
-                fontWeight: 800,
-                cursor: 'pointer'
-              }}
-            >
-              🔥 Daha Fazla Baskı
-            </button>
-            <button
-              onClick={() => handleDugoutShout('Hücuma Çıkın!')}
-              style={{
-                background: '#1e293b',
-                color: '#fff',
-                border: '1px solid #334155',
-                padding: '8px 4px',
-                borderRadius: '8px',
-                fontSize: '10px',
-                fontWeight: 800,
-                cursor: 'pointer'
-              }}
-            >
-              ⚔️ Hücuma Çıkın
-            </button>
-            <button
-              onClick={() => handleDugoutShout('Sakin Kalın / Pas Yapın!')}
-              style={{
-                background: '#1e293b',
-                color: '#fff',
-                border: '1px solid #334155',
-                padding: '8px 4px',
-                borderRadius: '8px',
-                fontSize: '10px',
-                fontWeight: 800,
-                cursor: 'pointer'
-              }}
-            >
-              🎯 Sakin Kalın
-            </button>
-          </div>
+          <button
+            onClick={() => setMatchActiveTab('squad')}
+            style={{
+              background: matchActiveTab === 'squad' ? 'linear-gradient(135deg, #0284c7, #0369a1)' : 'transparent',
+              color: matchActiveTab === 'squad' ? '#fff' : '#94a3b8',
+              border: 'none',
+              padding: '8px 4px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '2px',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>📊 Kadrom</span>
+            <span style={{ fontSize: '8px', opacity: 0.8 }}>Puan & Kondisyon</span>
+          </button>
 
-          {/* Son 15 Dakika: Agresif Oyna Butonu */}
-          {snapshot.phase === 'MATCH_SECOND_HALF' && isLateGame && (
-            <button
-              onClick={handleAllOutAttack}
-              disabled={allOutUsed}
-              style={{
-                marginTop: '4px',
-                width: '100%',
-                background: allOutUsed
-                  ? '#334155'
-                  : 'linear-gradient(135deg, #dc2626, #991b1b)',
-                color: '#fff',
-                border: 'none',
-                padding: '12px',
-                borderRadius: '10px',
-                fontSize: '14px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                boxShadow: allOutUsed ? 'none' : '0 0 15px rgba(220, 38, 38, 0.5)'
-              }}
-            >
-              {allOutUsed ? '🔥 TÜM HATLARIYLA HÜCUM DEVREDE!' : '🚨 TÜM HATLARIYLA HÜCUM ET!'}
-            </button>
-          )}
+          <button
+            onClick={() => setMatchActiveTab('log')}
+            style={{
+              background: matchActiveTab === 'log' ? 'linear-gradient(135deg, #0284c7, #0369a1)' : 'transparent',
+              color: matchActiveTab === 'log' ? '#fff' : '#94a3b8',
+              border: 'none',
+              padding: '8px 4px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '2px',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>🎙️ Spiker</span>
+            <span style={{ fontSize: '8px', opacity: 0.8 }}>Canlı Akış & xG</span>
+          </button>
         </div>
+
+        {/* SEKME 1: TAKTİK & SESLENİŞLER */}
+        {matchActiveTab === 'tactics' && (
+          <div style={{ flex: 1, padding: '12px 14px calc(28px + env(safe-area-inset-bottom, 0px)) 14px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {/* Canlı Mentalite Switcher */}
+            <div style={{
+              background: '#0d1527',
+              borderRadius: '10px',
+              padding: '10px',
+              border: '1px solid #1e293b'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 900, color: '#38bdf8', textTransform: 'uppercase' }}>
+                  🎯 TAKIM MENTALİTESİ
+                </span>
+                <span style={{ fontSize: '9px', color: '#94a3b8' }}>
+                  Sahadaki dizilişi ve risk seviyesini anında değiştirir
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                {([
+                  { id: 'defensive', label: 'Savunma', icon: '🛡️' },
+                  { id: 'balanced', label: 'Dengeli', icon: '⚖️' },
+                  { id: 'attacking', label: 'Hücum', icon: '⚔️' },
+                  { id: 'all_out_attack', label: 'Tam Saha', icon: '🚨' }
+                ] as const).map((m) => {
+                  const isActive = currentMentality === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => handleLiveMentality(m.id)}
+                      style={{
+                        background: isActive ? 'linear-gradient(135deg, #0284c7, #0369a1)' : '#1e293b',
+                        color: isActive ? '#fff' : '#94a3b8',
+                        border: isActive ? '1px solid #38bdf8' : '1px solid #334155',
+                        borderRadius: '8px',
+                        padding: '8px 2px',
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '2px',
+                        boxShadow: isActive ? '0 0 10px rgba(56, 189, 248, 0.4)' : 'none'
+                      }}
+                    >
+                      <span style={{ fontSize: '14px' }}>{m.icon}</span>
+                      <span>{m.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Oyun Tarzı Geçişi */}
+            <div style={{
+              background: '#0d1527',
+              borderRadius: '10px',
+              padding: '10px',
+              border: '1px solid #1e293b'
+            }}>
+              <div style={{ fontSize: '10px', fontWeight: 900, color: '#38bdf8', textTransform: 'uppercase', marginBottom: '8px' }}>
+                ⚽ OYUN TARZI (PAS & BASKI)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                {([
+                  { id: 'balanced', label: '⚖️ Dengeli Pas', sub: 'Standart tempo' },
+                  { id: 'possession', label: '🔄 Topa Sahip Olma', sub: 'Kısa pas, sabırlı atak' },
+                  { id: 'counter', label: '⚡ Hızlı Kontra', sub: 'Dikine direkt toplar' },
+                  { id: 'high_press', label: '🔥 Şok Ön Alan Presi', sub: 'Rakip yarı sahada baskı' }
+                ] as const).map((ps) => {
+                  const isActive = selectedPlaystyle === ps.id;
+                  return (
+                    <button
+                      key={ps.id}
+                      onClick={() => handleLivePlaystyle(ps.id)}
+                      style={{
+                        background: isActive ? '#0f766e' : '#1e293b',
+                        color: '#fff',
+                        border: isActive ? '1px solid #2dd4bf' : '1px solid #334155',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        textAlign: 'left',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <div style={{ fontSize: '11px', fontWeight: 800 }}>{ps.label}</div>
+                      <div style={{ fontSize: '9px', color: '#94a3b8', marginTop: '2px' }}>{ps.sub}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* FM Kulübe Seslenişleri (Touchline Shouts) */}
+            <div style={{
+              background: '#0d1527',
+              borderRadius: '10px',
+              padding: '10px',
+              border: '1px solid #1e293b'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 900, color: '#f59e0b', textTransform: 'uppercase' }}>
+                  📣 FM KULÜBE SESLENİŞLERİ (TOUCHLINE SHOUTS)
+                </span>
+                {shoutCooldown > 0 && (
+                  <span style={{ fontSize: '9px', fontWeight: 900, color: '#f87171', background: '#450a0a', padding: '2px 6px', borderRadius: '4px' }}>
+                    ⏳ {shoutCooldown}s bekleme
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                {([
+                  { id: 'push_forward', label: '🔥 Takımı İleri İt', sub: '+Hücum temposu ve bek koşusu' },
+                  { id: 'tighten_up', label: '🧱 Hatları Sıklaştır', sub: '+Savunma direnci ve alan daraltma' },
+                  { id: 'play_creative', label: '✨ Yaratıcı Oynayın', sub: '+Kilit ara pası ve şut arayışı' },
+                  { id: 'demand_more', label: '⚡ Daha Fazla İsteyin', sub: '+İkili mücadele ve pres temposu' }
+                ] as const).map((sh) => (
+                  <button
+                    key={sh.id}
+                    disabled={shoutCooldown > 0}
+                    onClick={() => handleDugoutShout(sh.id, sh.label)}
+                    style={{
+                      background: shoutCooldown > 0 ? '#1e293b80' : 'linear-gradient(145deg, #1e293b, #111827)',
+                      color: shoutCooldown > 0 ? '#64748b' : '#fff',
+                      border: '1px solid #334155',
+                      borderRadius: '8px',
+                      padding: '8px',
+                      textAlign: 'left',
+                      cursor: shoutCooldown > 0 ? 'not-allowed' : 'pointer',
+                      opacity: shoutCooldown > 0 ? 0.6 : 1
+                    }}
+                  >
+                    <div style={{ fontSize: '11px', fontWeight: 800 }}>{sh.label}</div>
+                    <div style={{ fontSize: '8px', color: '#94a3b8', marginTop: '2px' }}>{sh.sub}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Devre Arası Soyunma Odası Talimatı */}
+            {snapshot.phase === 'HALFTIME' && (
+              <div style={{
+                background: 'linear-gradient(135deg, #1e293b, #0f172a)',
+                borderRadius: '12px',
+                padding: '12px',
+                border: '1px solid #f59e0b'
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: 900, color: '#f59e0b', marginBottom: '8px' }}>
+                  ☕ SOYUNMA ODASI TALİMATI (Kalan: {snapshot.phaseTimeLeft}s)
+                </div>
+                <button
+                  onClick={handleHalftimeAdjustment}
+                  style={{
+                    width: '100%',
+                    background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 900,
+                    cursor: 'pointer'
+                  }}
+                >
+                  2. Yarı Talimatını Uygula 🚀
+                </button>
+              </div>
+            )}
+
+            {/* Son 15 Dakika Agresif Oyna Butonu */}
+            {snapshot.phase === 'MATCH_SECOND_HALF' && isLateGame && (
+              <button
+                onClick={handleAllOutAttack}
+                disabled={allOutUsed}
+                style={{
+                  marginTop: 'auto',
+                  width: '100%',
+                  background: allOutUsed
+                    ? '#334155'
+                    : 'linear-gradient(135deg, #dc2626, #991b1b)',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  fontSize: '13px',
+                  fontWeight: 900,
+                  cursor: allOutUsed ? 'not-allowed' : 'pointer',
+                  boxShadow: allOutUsed ? 'none' : '0 0 15px rgba(220, 38, 38, 0.5)'
+                }}
+              >
+                {allOutUsed ? '🔥 TÜM HATLARIYLA HÜCUM DEVREDE!' : '🚨 TÜM HATLARIYLA HÜCUM ET!'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* SEKME 2: CANLI KADRO & PUANLAR */}
+        {matchActiveTab === 'squad' && (
+          <div style={{ flex: 1, padding: '10px 14px calc(28px + env(safe-area-inset-bottom, 0px)) 14px', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 900, color: '#94a3b8' }}>
+                KADRONUZ ({mySquadCards.length} OYUNCU)
+              </span>
+              <span style={{ fontSize: '9px', color: '#64748b' }}>
+                Kondisyon & Maç Durumu
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {mySquadCards.map((card) => {
+                const pState = pitchPlayers.find((p) => p.id === card.id);
+                const stamina = pState ? Math.round(pState.stamina) : 100;
+                const goals = pState?.goals || 0;
+                const assists = pState?.assists || 0;
+                const staminaColor = stamina > 70 ? '#10b981' : (stamina > 40 ? '#f59e0b' : '#ef4444');
+
+                return (
+                  <div
+                    key={card.id}
+                    style={{
+                      background: '#0d1527',
+                      borderRadius: '8px',
+                      padding: '8px 10px',
+                      border: '1px solid #1e293b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px'
+                    }}
+                  >
+                    <PlayerAvatar url={card.photoUrl} name={card.name} flag={card.countryFlag} size={36} />
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{
+                          background: '#1e293b',
+                          color: '#38bdf8',
+                          fontSize: '9px',
+                          fontWeight: 900,
+                          padding: '1px 5px',
+                          borderRadius: '4px'
+                        }}>
+                          {card.specificRole || card.position}
+                        </span>
+                        <span style={{ fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {card.shortName || card.name}
+                        </span>
+                      </div>
+
+                      {/* Kondisyon Mini Barı */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                        <div style={{ flex: 1, height: '4px', background: '#1e293b', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ width: `${stamina}%`, height: '100%', background: staminaColor }} />
+                        </div>
+                        <span style={{ fontSize: '9px', fontWeight: 800, color: staminaColor, minWidth: '24px' }}>
+                          %{stamina}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Gol & Asist & Maç Durumu */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {goals > 0 && (
+                        <span style={{ fontSize: '11px', fontWeight: 900, color: '#10b981' }}>
+                          ⚽{goals > 1 ? `x${goals}` : ''}
+                        </span>
+                      )}
+                      {assists > 0 && (
+                        <span style={{ fontSize: '11px', fontWeight: 900, color: '#38bdf8' }}>
+                          👟{assists > 1 ? `x${assists}` : ''}
+                        </span>
+                      )}
+                      {stamina > 75 ? (
+                        <span style={{ fontSize: '10px', background: '#064e3b', color: '#34d399', fontWeight: 800, padding: '3px 7px', borderRadius: '6px' }}>
+                          Formda
+                        </span>
+                      ) : stamina > 45 ? (
+                        <span style={{ fontSize: '10px', background: '#1e293b', color: '#94a3b8', fontWeight: 700, padding: '3px 7px', borderRadius: '6px' }}>
+                          Normal
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '10px', background: '#450a0a', color: '#f87171', fontWeight: 800, padding: '3px 7px', borderRadius: '6px' }}>
+                          Yorgun
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* SEKME 3: SPİKER & MAÇ GÜNLÜĞÜ */}
+        {matchActiveTab === 'log' && (
+          <div style={{ flex: 1, padding: '10px 14px calc(28px + env(safe-area-inset-bottom, 0px)) 14px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Topla Oynama & xG İstatistik Kartı */}
+            <div style={{ padding: '10px', background: '#0d1527', borderRadius: '10px', border: '1px solid #1e293b' }}>
+              {/* Topla Oynama */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, marginBottom: '3px' }}>
+                <span style={{ color: '#38bdf8' }}>%{snapshot.matchStats ? snapshot.matchStats.possession[0] : 50}</span>
+                <span style={{ color: '#94a3b8', fontSize: '9px' }}>TOPLA OYNAMA</span>
+                <span style={{ color: '#f59e0b' }}>%{snapshot.matchStats ? snapshot.matchStats.possession[1] : 50}</span>
+              </div>
+              <div style={{ height: '5px', background: '#1e293b', borderRadius: '3px', overflow: 'hidden', display: 'flex', marginBottom: '8px' }}>
+                <div style={{ width: `${snapshot.matchStats ? snapshot.matchStats.possession[0] : 50}%`, background: '#38bdf8' }} />
+                <div style={{ width: `${snapshot.matchStats ? snapshot.matchStats.possession[1] : 50}%`, background: '#f59e0b' }} />
+              </div>
+
+              {/* xG Beklenen Gol */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800 }}>
+                <span style={{ color: '#38bdf8' }}>xG: {snapshot.matchStats ? snapshot.matchStats.xg[0] : '0.00'}</span>
+                <span style={{ color: '#94a3b8', fontSize: '9px' }}>BEKLENEN GOL (xG)</span>
+                <span style={{ color: '#f59e0b' }}>xG: {snapshot.matchStats ? snapshot.matchStats.xg[1] : '0.00'}</span>
+              </div>
+            </div>
+
+            {/* Varsa Aktif Kritik Pozisyon Kartı */}
+            {snapshot.currentHighlight && (
+              <div style={{
+                background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                border: '2px solid #38bdf8',
+                borderRadius: '10px',
+                padding: '10px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{
+                    background: snapshot.currentHighlight.type === 'GOAL' ? '#10b981' : (snapshot.currentHighlight.type === 'SAVE' ? '#2563eb' : '#f59e0b'),
+                    color: '#fff',
+                    fontSize: '10px',
+                    fontWeight: 900,
+                    padding: '2px 8px',
+                    borderRadius: '6px'
+                  }}>
+                    {snapshot.currentHighlight.type === 'GOAL' ? '⚽ GOOOL!' : (snapshot.currentHighlight.type === 'SAVE' ? '🧤 KURTARIŞ' : '💥 KRİTİK AN')}
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 700 }}>
+                    Dakika {snapshot.currentHighlight.minute}'
+                  </span>
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#f8fafc', lineHeight: 1.3 }}>
+                  {snapshot.currentHighlight.commentary}
+                </div>
+              </div>
+            )}
+
+            {/* FM Canlı Spiker Akışı (Live Ticker) */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase' }}>
+                SPİKER AKIŞI (CANLI YORUM)
+              </div>
+
+              {snapshot.liveTicker && snapshot.liveTicker.length > 0 ? (
+                snapshot.liveTicker.map((msg) => {
+                  const badgeIcon = msg.type === 'GOAL' ? '⚽' : (msg.type === 'SAVE' ? '🧤' : (msg.type === 'DANGER' ? '⚡' : (msg.type === 'SHOUT' ? '📣' : '🎙️')));
+                  return (
+                    <div
+                      key={msg.id}
+                      style={{
+                        background: '#0d1527',
+                        borderLeft: msg.type === 'GOAL' ? '3px solid #10b981' : (msg.type === 'DANGER' ? '3px solid #f59e0b' : (msg.type === 'SAVE' ? '3px solid #2563eb' : '3px solid #334155')),
+                        padding: '6px 10px',
+                        borderRadius: '0 6px 6px 0',
+                        fontSize: '11px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                        <span style={{ fontSize: '10px' }}>{badgeIcon}</span>
+                        <span style={{ color: '#38bdf8', fontWeight: 900, fontSize: '10px', fontFamily: 'monospace' }}>
+                          [{String(Math.floor(msg.second / 60)).padStart(2, '0')}:{String(msg.second % 60).padStart(2, '0')}]
+                        </span>
+                      </div>
+                      <div style={{ color: msg.type === 'GOAL' ? '#86efac' : '#cbd5e1', fontWeight: msg.type === 'GOAL' ? 800 : 500 }}>
+                        {msg.text}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ textAlign: 'center', color: '#64748b', padding: '16px', fontSize: '11px' }}>
+                  Maç heyecanı başlıyor, spiker yorumları buraya düşecek...
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1499,8 +1906,9 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
         background: '#090d16',
         color: '#fff',
         fontFamily: 'Inter, system-ui, sans-serif',
-        padding: '16px',
-        overflowY: 'auto'
+        padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px)) 16px',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '14px' }}>
           <div style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 800 }}>DÜELLO TAMAMLANDI</div>
@@ -1520,7 +1928,7 @@ export function TransferShowdownController({ sdk, playerId }: Props) {
         }}>
           <div style={{ fontSize: '11px', color: '#eab308', fontWeight: 800 }}>🏆 MAÇIN ADAMI (MVP)</div>
           <div style={{ fontSize: '18px', fontWeight: 900, marginTop: '2px' }}>
-            {stats.mvp.name} ({stats.mvp.rating})
+            {stats.mvp.name}
           </div>
           <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
             {stats.mvp.reason}

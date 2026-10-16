@@ -17,7 +17,9 @@ import {
   TransferShowdownGame,
   type BidAction,
   type TacticsSubmission,
-  type ManagerTactics
+  type ManagerTactics,
+  type LiveTacticsAction,
+  type ShoutAction
 } from '@games/transfer-showdown';
 
 export class LobbyRoom extends Room<{ state: SessionStateType }> {
@@ -277,6 +279,18 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
       if (this.state.isPaused) return;
       if (this.state.activeGameId !== 'transfer-showdown') return;
       this.transferShowdownGame?.handleAllOutAttack(client.sessionId);
+    });
+
+    this.onMessage('SHOWDOWN_LIVE_TACTICS', (client, message: LiveTacticsAction) => {
+      if (this.state.isPaused) return;
+      if (this.state.activeGameId !== 'transfer-showdown') return;
+      this.transferShowdownGame?.handleLiveTactics(client.sessionId, message);
+    });
+
+    this.onMessage('SHOWDOWN_SHOUT', (client, message: ShoutAction) => {
+      if (this.state.isPaused) return;
+      if (this.state.activeGameId !== 'transfer-showdown') return;
+      this.transferShowdownGame?.handleTouchlineShout(client.sessionId, message.shout);
     });
 
     // Lobiye geri dönme - Sadece Oda Yöneticisi veya Ekran

@@ -38,3 +38,4 @@ Thumbs.db
 # Temporary test scripts
 test-client*.js
 test-client*.cjs
+scratch/

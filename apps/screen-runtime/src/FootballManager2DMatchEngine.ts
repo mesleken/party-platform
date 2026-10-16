@@ -1,31 +1,14 @@
 import type {
   CardPosition,
-  MatchHighlight,
+  PitchBallState,
+  PitchPlayerState,
   PlayerCard,
   ShowdownSnapshot
 } from '@games/transfer-showdown';
 
-interface PlayerVisual {
-  id: string;
-  name: string;
-  shortName: string;
-  number: number;
-  position: CardPosition;
-  teamIndex: number;
-  photoUrl?: string;
-  ovr: number;
-  rating: number; // FM live rating e.g. 6.8, 7.5
-  goals: number;
-  // Sabit taktiksel referans noktası (0..100, 0..64)
-  baseX: number;
-  baseY: number;
-  // Canlı hareket koordinatları
-  x: number;
-  y: number;
-  targetX: number;
-  targetY: number;
+interface PlayerVisual extends PitchPlayerState {
+  heading: number; // Radian direction for pointer triangle
   hasBall: boolean;
-  isDiving?: boolean;
 }
 
 interface Particle {
@@ -54,25 +37,18 @@ export class FootballManager2DMatchEngine {
   private ballY = 32;
   private ballTargetX = 50;
   private ballTargetY = 32;
-  private ballHeight = 0; // for 3D aerial shadow simulation
+  private ballVx = 0;
+  private ballVy = 0;
+  private ballFlightEndX = 50;
+  private ballFlightEndY = 32;
+  private ballCarrierId: string | null = null;
+  private ballHeight = 0;
   private ballTrail: { x: number; y: number; alpha: number }[] = [];
+  private passType?: string;
+  private passOrigin = { x: 50, y: 32 };
 
-  // Autonomous Continuous Football Match Simulation (Sürekli Canlı Maç Simülasyonu)
-  private possessionTeam: 0 | 1 = 0;
-  private ballCarrierId = '';
-  private possessionHoldTimer = 0;
-  private nextPassInterval = 1.4;
-  private isPassing = false;
-  private passStart = { x: 50, y: 32 };
-  private passEnd = { x: 50, y: 32 };
-  private passProgress = 0;
-  private passReceiverId = '';
-
-  // Server Highlight playback
+  // Server Highlight & Celebration
   private activeHighlightId = '';
-  private activeHighlight: MatchHighlight | null = null;
-  private highlightElapsed = 0;
-  private highlightStage = 0; // 0=buildup, 1=through pass, 2=finish
   private goalCelebrationTimer = 0;
   private goalScorerName = '';
   private goalParticles: Particle[] = [];
@@ -96,7 +72,7 @@ export class FootballManager2DMatchEngine {
     if (!ctx) throw new Error('Could not get Canvas 2D context');
     this.ctx = ctx;
 
-    // Kadroları hemen varsayılan 22 oyuncu ile başlat (sahada asla boşluk olmaz)
+    // Kadroları hemen varsayılan 22 oyuncu ile başlat
     this.initDefaultSquads();
 
     this.onResize();
@@ -113,62 +89,13 @@ export class FootballManager2DMatchEngine {
     this.canvas.height = this.container.clientHeight * dpr;
   };
 
-  /**
-   * Her iki takım için tam 11'er (toplam 22) oyuncuyu garantili olarak başlatır.
-   */
   private initDefaultSquads() {
-    this.homePlayers = this.createVisualSquad([], 0);
-    this.awayPlayers = this.createVisualSquad([], 1);
-    this.ballCarrierId = this.homePlayers[6]?.id || '';
+    this.homePlayers = this.createVisualSquad(0);
+    this.awayPlayers = this.createVisualSquad(1);
     if (this.homePlayers[6]) this.homePlayers[6].hasBall = true;
   }
 
-  public updateSnapshot(snap: ShowdownSnapshot) {
-    this.currentSnapshot = snap;
-
-    // Gerçek menajer kartları geldikçe oyuncu isimlerini ve yüzlerini senkronize et
-    this.syncSquadCards(snap);
-
-    // Aktif pozisyon (Highlight) güncellemesi
-    const h = snap.currentHighlight;
-    if (h && h.id !== this.activeHighlightId) {
-      this.activeHighlightId = h.id;
-      this.activeHighlight = h;
-      this.highlightElapsed = 0;
-      this.highlightStage = 0;
-      this.startHighlightSequence(h);
-    }
-  }
-
-  private syncSquadCards(snap: ShowdownSnapshot) {
-    const managers = Object.values(snap.managers || {});
-    const m0 = managers.find((m) => m.teamIndex === 0) || managers[0];
-    const m1 = managers.find((m) => m.teamIndex === 1) || managers[1];
-
-    if (m0 && m0.cards && m0.cards.length > 0) {
-      this.updateSquadWithCards(this.homePlayers, m0.cards);
-    }
-    if (m1 && m1.cards && m1.cards.length > 0) {
-      this.updateSquadWithCards(this.awayPlayers, m1.cards);
-    }
-  }
-
-  private updateSquadWithCards(players: PlayerVisual[], cards: PlayerCard[]) {
-    cards.slice(0, 11).forEach((c, idx) => {
-      const p = players[idx];
-      if (p) {
-        p.id = c.id;
-        p.name = c.name;
-        p.shortName = c.shortName || c.name.split(' ').pop() || c.name;
-        p.position = c.position;
-        p.photoUrl = c.photoUrl;
-        p.ovr = c.ovr;
-      }
-    });
-  }
-
-  private createVisualSquad(cards: PlayerCard[], teamIdx: number): PlayerVisual[] {
-    // 4-3-3 Taktiksel Saha Koordinatları (0..100, 0..64)
+  private createVisualSquad(teamIdx: 0 | 1): PlayerVisual[] {
     const baseCoordsHome: [number, number][] = [
       [8, 32],   // 1. GK
       [24, 12],  // 2. LB
@@ -212,28 +139,32 @@ export class FootballManager2DMatchEngine {
 
     const squad: PlayerVisual[] = [];
     for (let i = 0; i < 11; i++) {
-      const c = cards[i];
       const coord = coords[i] || [50, 32];
-      const fullName = c ? c.name : defaultNames[i];
-      const shortName = c?.shortName || fullName.split(' ').pop() || fullName;
+      const fullName = defaultNames[i];
+      const shortName = fullName.split(' ').pop() || fullName;
 
       squad.push({
-        id: c ? c.id : `default-${teamIdx}-${i}`,
+        id: `default-${teamIdx}-${i}`,
+        slotIndex: i,
+        role: defaultPositions[i],
         name: fullName,
         shortName,
         number: i === 0 ? 1 : i + 1,
-        position: c ? c.position : defaultPositions[i],
+        position: defaultPositions[i],
         teamIndex: teamIdx,
-        photoUrl: c?.photoUrl,
-        ovr: c ? c.ovr : 85,
-        rating: 6.6 + Math.random() * 0.7,
-        goals: 0,
         baseX: coord[0],
         baseY: coord[1],
         x: coord[0],
         y: coord[1],
         targetX: coord[0],
         targetY: coord[1],
+        stamina: 100,
+        rating: 6.8 + Math.random() * 0.4,
+        goals: 0,
+        assists: 0,
+        action: 'IDLE',
+        ovr: 85,
+        heading: teamIdx === 0 ? 0 : Math.PI,
         hasBall: false
       });
     }
@@ -241,214 +172,101 @@ export class FootballManager2DMatchEngine {
     return squad;
   }
 
-  // ============================================================
-  // SERVER HIGHLIGHT EVENT CONTROL (Kritik Pozisyon Oynatımı)
-  // ============================================================
-  private startHighlightSequence(h: MatchHighlight) {
-    const isHome = h.attackingTeam === 0;
-    this.possessionTeam = h.attackingTeam;
-    this.isPassing = false;
+  public updateSnapshot(snap: ShowdownSnapshot) {
+    this.currentSnapshot = snap;
 
-    const attSquad = isHome ? this.homePlayers : this.awayPlayers;
-    const defSquad = isHome ? this.awayPlayers : this.homePlayers;
-
-    [...this.homePlayers, ...this.awayPlayers].forEach((p) => (p.hasBall = false));
-
-    // Aşama 1: Oyun kurucu orta saha topu alır ve hücumu başlatır
-    const midCards = attSquad.filter((p) => p.position === 'MID');
-    const playmaker = (h.assistName ? attSquad.find((p) => p.name.includes(h.assistName || '')) : null) || midCards[0] || attSquad[6];
-    if (playmaker) {
-      playmaker.hasBall = true;
-      this.ballCarrierId = playmaker.id;
-      this.ballTargetX = playmaker.x;
-      this.ballTargetY = playmaker.y;
-    }
-
-    // Takımların hücum yönünde dinamik kayması
-    const attackDir = isHome ? 1 : -1;
-    attSquad.forEach((p, idx) => {
-      if (idx !== 0) {
-        p.targetX = Math.max(12, Math.min(88, p.baseX + attackDir * (10 + Math.random() * 5)));
-        p.targetY = Math.max(8, Math.min(56, p.baseY + (Math.random() * 6 - 3)));
-      }
-    });
-    defSquad.forEach((p, idx) => {
-      if (idx !== 0) {
-        p.targetX = Math.max(12, Math.min(88, p.baseX + attackDir * (7 + Math.random() * 4)));
-        p.targetY = Math.max(8, Math.min(56, p.baseY + (Math.random() * 4 - 2)));
-      }
-    });
-  }
-
-  private updateHighlightStages(h: MatchHighlight, elapsed: number) {
-    const isHome = h.attackingTeam === 0;
-    const attSquad = isHome ? this.homePlayers : this.awayPlayers;
-    const defSquad = isHome ? this.awayPlayers : this.homePlayers;
-
-    const targetName = h.scorerName || '';
-    const attacker = attSquad.find((p) => targetName && p.name.includes(targetName)) || attSquad[9] || attSquad[10];
-    const gk = defSquad[0];
-    const goalX = isHome ? 97 : 3;
-    const goalY = 32 + (Math.sin(this.globalTick * 3) * 6);
-
-    // Aşama 2 (3.0sn - 5.5sn): Ceza sahasına öldürücü ara pası / forvetin deparı
-    if (elapsed >= 3.0 && this.highlightStage === 0) {
-      this.highlightStage = 1;
-      [...this.homePlayers, ...this.awayPlayers].forEach((p) => (p.hasBall = false));
-
-      if (attacker) {
-        attacker.hasBall = true;
-        this.ballCarrierId = attacker.id;
-        attacker.targetX = isHome ? 80 + Math.random() * 6 : 20 - Math.random() * 6;
-        attacker.targetY = 24 + Math.random() * 16;
-        this.ballTargetX = attacker.targetX;
-        this.ballTargetY = attacker.targetY;
-        this.ballHeight = 1.2;
-      }
-    }
-
-    // Aşama 3 (5.5sn - 9.0sn): Şut, Kurtarış veya Ağları Havalandıran Gol!
-    if (elapsed >= 5.5 && this.highlightStage === 1) {
-      this.highlightStage = 2;
-
-      if (h.type === 'GOAL' || h.type === 'PENALTY_GOAL') {
-        this.goalCelebrationTimer = 3.5;
-        this.goalScorerName = h.scorerName || attacker?.name || 'Futbolcu';
-        if (attacker) {
-          attacker.goals++;
-          attacker.rating = Math.min(10, attacker.rating + 0.9);
-        }
-
-        // Ağlara giden sert şut
-        this.ballTargetX = goalX;
-        this.ballTargetY = goalY;
-        this.ballHeight = 2.4;
-        this.spawnGoalConfetti();
-      } else if (h.type === 'SAVE' || h.type === 'PENALTY_SAVE') {
-        // Kaleci kurtarışı
-        this.ballTargetX = isHome ? 93 : 7;
-        this.ballTargetY = goalY;
-        this.ballHeight = 1.5;
-        if (gk) {
-          gk.rating = Math.min(10, gk.rating + 0.6);
-          gk.isDiving = true;
-          setTimeout(() => { if (gk) gk.isDiving = false; }, 2000);
-        }
-      } else if (h.type === 'WOODWORK') {
-        // Direkten dönen şut
-        this.ballTargetX = goalX;
-        this.ballTargetY = 32;
-        this.ballHeight = 2.8;
-      } else {
-        // Defans müdahalesi / Dışarı
-        this.ballTargetX = isHome ? 88 : 12;
-        this.ballTargetY = 12 + Math.random() * 40;
-        this.ballHeight = 0.8;
-      }
-    }
-
-    // Highlight bittiğinde sürekli canlı maç akışına geri dön
-    if (elapsed >= 8.8) {
-      this.activeHighlight = null;
-      this.highlightStage = 0;
-      this.possessionHoldTimer = 0;
-      // Topu defansa aktararak sürekli maç paslaşmasını devam ettir
-      const nextTeamSquad = isHome ? this.awayPlayers : this.homePlayers;
-      const nextCarrier = nextTeamSquad[1] || nextTeamSquad[0];
-      if (nextCarrier) {
-        this.possessionTeam = (1 - h.attackingTeam) as 0 | 1;
-        this.ballCarrierId = nextCarrier.id;
-        nextCarrier.hasBall = true;
-        this.ballTargetX = nextCarrier.x;
-        this.ballTargetY = nextCarrier.y;
-      }
-    }
-  }
-
-  // ============================================================
-  // AUTONOMOUS CONTINUOUS MATCH SIMULATION (Sürekli Canlı Maç)
-  // ============================================================
-  private updateContinuousMatchPlay(deltaSec: number) {
-    if (this.activeHighlight) return; // Sunucu pozisyonu aktifse o önceliklidir
-
-    const isHome = this.possessionTeam === 0;
-    const attSquad = isHome ? this.homePlayers : this.awayPlayers;
-    const defSquad = isHome ? this.awayPlayers : this.homePlayers;
-    const attackDir = isHome ? 1 : -1;
-
-    // 1. Takımların taktiksel nefes alması (Breathing / Shift)
-    attSquad.forEach((p, idx) => {
-      if (idx !== 0) {
-        p.targetX = Math.max(10, Math.min(90, p.baseX + attackDir * 5 + Math.sin(this.globalTick * 1.5 + idx) * 1.8));
-        p.targetY = Math.max(8, Math.min(56, p.baseY + Math.cos(this.globalTick * 1.2 + idx) * 1.4));
-      }
-    });
-    defSquad.forEach((p, idx) => {
-      if (idx !== 0) {
-        p.targetX = Math.max(10, Math.min(90, p.baseX - attackDir * 4 + Math.sin(this.globalTick * 1.5 + idx) * 1.5));
-        p.targetY = Math.max(8, Math.min(56, p.baseY + Math.cos(this.globalTick * 1.2 + idx) * 1.2));
-      }
-    });
-
-    // 2. Topu Taşıma & Paslaşma Döngüsü
-    let carrier = attSquad.find((p) => p.id === this.ballCarrierId);
-    if (!carrier) {
-      carrier = attSquad[6] || attSquad[0];
-      this.ballCarrierId = carrier.id;
-      carrier.hasBall = true;
-    }
-
-    if (!this.isPassing) {
-      // Top taşıyıcının ayağında sürülür
-      this.ballTargetX = carrier.x;
-      this.ballTargetY = carrier.y;
-      this.possessionHoldTimer += deltaSec;
-
-      // Belirli aralıklarla takım arkadaşına pas çıkar
-      if (this.possessionHoldTimer >= this.nextPassInterval) {
-        this.possessionHoldTimer = 0;
-        this.nextPassInterval = 1.2 + Math.random() * 1.2;
-
-        // Pas verilecek uygun takım arkadaşını seç (kendi hariç)
-        const candidates = attSquad.filter((p) => p.id !== carrier?.id);
-        const receiver = candidates[Math.floor(Math.random() * candidates.length)] || attSquad[0];
-
-        this.isPassing = true;
-        this.passStart = { x: this.ballX, y: this.ballY };
-        this.passEnd = { x: receiver.x, y: receiver.y };
-        this.passProgress = 0;
-        this.passReceiverId = receiver.id;
-        carrier.hasBall = false;
-
-        // %12 İhtimalle Savunma Araya Girer (Interception / Top Çalma)
-        if (Math.random() < 0.12) {
-          const interceptor = defSquad[1 + Math.floor(Math.random() * (defSquad.length - 1))];
-          if (interceptor) {
-            this.passReceiverId = interceptor.id;
-            this.possessionTeam = (1 - this.possessionTeam) as 0 | 1;
-            interceptor.rating = Math.min(10, interceptor.rating + 0.3);
-          }
-        }
-      }
+    // 1. Sunucu FM PitchState mevcutsa doğrudan senkronize et
+    if (snap.pitchState && snap.pitchState.players && snap.pitchState.players.length >= 22) {
+      this.syncServerPitchState(snap.pitchState.players, snap.pitchState.ball);
     } else {
-      // Pas havada / yerde seyrediyor
-      this.passProgress += deltaSec * 1.6; // Pas süresi ~0.6s
-      const pClamped = Math.min(1, this.passProgress);
-      this.ballTargetX = this.passStart.x + (this.passEnd.x - this.passStart.x) * pClamped;
-      this.ballTargetY = this.passStart.y + (this.passEnd.y - this.passStart.y) * pClamped;
-      this.ballHeight = Math.sin(pClamped * Math.PI) * 0.9;
+      // Geriye dönük uyumluluk: manager cards ile senkronize et
+      this.syncSquadCards(snap);
+    }
 
-      if (this.passProgress >= 1) {
-        this.isPassing = false;
-        this.ballCarrierId = this.passReceiverId;
-        const newCarrier = [...this.homePlayers, ...this.awayPlayers].find((p) => p.id === this.passReceiverId);
-        if (newCarrier) {
-          newCarrier.hasBall = true;
-          this.ballTargetX = newCarrier.x;
-          this.ballTargetY = newCarrier.y;
-        }
+    // 2. Aktif Gol / Highlight kontrolü
+    const h = snap.currentHighlight;
+    if (h && h.id !== this.activeHighlightId) {
+      this.activeHighlightId = h.id;
+      if (h.type === 'GOAL') {
+        this.goalCelebrationTimer = 4.0;
+        this.goalScorerName = h.scorerName || 'Gol!';
+        this.spawnGoalConfetti();
       }
     }
+  }
+
+  private syncServerPitchState(serverPlayers: PitchPlayerState[], serverBall: PitchBallState) {
+    // 22 Oyuncunun hedeflerini, kondisyonunu, reytingini ve aksiyonunu senkronize et
+    serverPlayers.forEach((sp) => {
+      const list = sp.teamIndex === 0 ? this.homePlayers : this.awayPlayers;
+      const local = list.find((p) => p.slotIndex === sp.slotIndex) || list[sp.slotIndex];
+      if (local) {
+        local.id = sp.id;
+        local.name = sp.name;
+        local.shortName = sp.shortName;
+        local.role = sp.role;
+        local.position = sp.position;
+        local.number = sp.number;
+        // Sunucunun canlı fiziksel koordinatlarını hedef al (ışınlanma engeli)
+        local.targetX = sp.x;
+        local.targetY = sp.y;
+        local.stamina = sp.stamina;
+        local.rating = sp.rating;
+        local.goals = sp.goals;
+        local.assists = sp.assists;
+        local.action = sp.action;
+        local.photoUrl = sp.photoUrl;
+        local.hasBall = sp.id === serverBall.carrierId;
+
+        // Heading açısını hesapla
+        const dx = sp.targetX - local.x;
+        const dy = sp.targetY - local.y;
+        if (Math.hypot(dx, dy) > 0.3) {
+          local.heading = Math.atan2(dy, dx);
+        }
+      }
+    });
+
+    // Top Durumu: Sunucunun anlık ball.x, ball.y ve hız vektörlerini (vx, vy) takip et
+    if (serverBall.isMoving && this.passType !== serverBall.passType) {
+      this.passOrigin = { x: this.ballX, y: this.ballY };
+    }
+    this.ballTargetX = serverBall.x;
+    this.ballTargetY = serverBall.y;
+    this.ballFlightEndX = serverBall.targetX ?? serverBall.x;
+    this.ballFlightEndY = serverBall.targetY ?? serverBall.y;
+    this.ballVx = serverBall.vx ?? 0;
+    this.ballVy = serverBall.vy ?? 0;
+    this.ballCarrierId = serverBall.carrierId ?? null;
+    this.ballHeight = serverBall.height;
+    this.passType = serverBall.passType;
+  }
+
+  private syncSquadCards(snap: ShowdownSnapshot) {
+    const managers = Object.values(snap.managers || {});
+    const m0 = managers.find((m) => m.teamIndex === 0) || managers[0];
+    const m1 = managers.find((m) => m.teamIndex === 1) || managers[1];
+
+    if (m0 && m0.cards && m0.cards.length > 0) {
+      this.updateSquadWithCards(this.homePlayers, m0.cards);
+    }
+    if (m1 && m1.cards && m1.cards.length > 0) {
+      this.updateSquadWithCards(this.awayPlayers, m1.cards);
+    }
+  }
+
+  private updateSquadWithCards(players: PlayerVisual[], cards: PlayerCard[]) {
+    cards.slice(0, 11).forEach((c, idx) => {
+      const p = players[idx];
+      if (p) {
+        p.id = c.id;
+        p.name = c.name;
+        p.shortName = c.shortName || c.name.split(' ').pop() || c.name;
+        p.position = c.position;
+        p.photoUrl = c.photoUrl;
+        p.ovr = c.ovr;
+      }
+    });
   }
 
   private spawnGoalConfetti() {
@@ -478,32 +296,60 @@ export class FootballManager2DMatchEngine {
   private updatePhysics() {
     const deltaSec = 0.016;
 
-    // Sürekli canlı maç simülasyonu
-    this.updateContinuousMatchPlay(deltaSec);
+    // 1. 22 Oyuncunun interpolasyonla akıcı hareketi (Step Clamping ile asla ışınlanmaz)
+    const updatePlayer = (p: PlayerVisual) => {
+      const dx = p.targetX - p.x;
+      const dy = p.targetY - p.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 55) {
+        // Devre arası veya ilk başlangıç
+        p.x = p.targetX;
+        p.y = p.targetY;
+      } else if (dist > 0.01) {
+        const step = Math.min(dist * 0.30, 0.72);
+        p.x += (dx / dist) * step;
+        p.y += (dy / dist) * step;
+      }
+    };
+    this.homePlayers.forEach(updatePlayer);
+    this.awayPlayers.forEach(updatePlayer);
 
-    // Sunucu pozisyonu aktifse 9 saniyelik aşamaları işlet
-    if (this.activeHighlight) {
-      this.highlightElapsed += deltaSec;
-      this.updateHighlightStages(this.activeHighlight, this.highlightElapsed);
+    // 2. Top hedefini 60fps'de ekstrapole et (snapshotlar arasında topun havada/yerde duraksamasını engeller)
+    if (this.ballCarrierId) {
+      const carrier =
+        this.homePlayers.find((p) => p.id === this.ballCarrierId) ||
+        this.awayPlayers.find((p) => p.id === this.ballCarrierId);
+      if (carrier) {
+        this.ballTargetX = carrier.x + Math.cos(carrier.heading || 0) * 0.45;
+        this.ballTargetY = carrier.y + Math.sin(carrier.heading || 0) * 0.45;
+      }
+    } else if (Math.hypot(this.ballVx, this.ballVy) > 0.2) {
+      const remDist = Math.hypot(this.ballFlightEndX - this.ballTargetX, this.ballFlightEndY - this.ballTargetY);
+      const stepV = Math.hypot(this.ballVx, this.ballVy) * deltaSec;
+      if (remDist > 0.2) {
+        const move = Math.min(remDist, stepV);
+        this.ballTargetX += ((this.ballFlightEndX - this.ballTargetX) / remDist) * move;
+        this.ballTargetY += ((this.ballFlightEndY - this.ballTargetY) / remDist) * move;
+      }
     }
 
-    // Top interpolasyonu & akıcı hareket
-    this.ballX += (this.ballTargetX - this.ballX) * 0.09;
-    this.ballY += (this.ballTargetY - this.ballY) * 0.09;
-    this.ballHeight *= 0.95;
+    // 3. Top interpolasyonu & akıcı hareket
+    const bdx = this.ballTargetX - this.ballX;
+    const bdy = this.ballTargetY - this.ballY;
+    const bdist = Math.hypot(bdx, bdy);
+    if (bdist > 80) {
+      this.ballX = this.ballTargetX;
+      this.ballY = this.ballTargetY;
+    } else if (bdist > 0.01) {
+      const bstep = Math.min(bdist * 0.48, 2.6);
+      this.ballX += (bdx / bdist) * bstep;
+      this.ballY += (bdy / bdist) * bstep;
+    }
 
     // Top izi (Motion Blur Trail)
     this.ballTrail.unshift({ x: this.ballX, y: this.ballY, alpha: 0.8 });
     if (this.ballTrail.length > 8) this.ballTrail.pop();
     this.ballTrail.forEach((t) => (t.alpha *= 0.85));
-
-    // 22 Oyuncunun interpolasyonla akıcı hareketi
-    const updatePlayer = (p: PlayerVisual) => {
-      p.x += (p.targetX - p.x) * 0.06;
-      p.y += (p.targetY - p.y) * 0.06;
-    };
-    this.homePlayers.forEach(updatePlayer);
-    this.awayPlayers.forEach(updatePlayer);
 
     // Konfeti parçacıkları
     if (this.goalCelebrationTimer > 0) {
@@ -524,9 +370,9 @@ export class FootballManager2DMatchEngine {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Saha ölçeklemesi ve merkezleme
-    const pitchMarginX = w * 0.08;
-    const pitchMarginY = h * 0.12;
+    // Saha ölçeklemesi ve merkezleme (Genişletilmiş Panorama Saha Görünümü & Skorboard Güvenli Alanı)
+    const pitchMarginX = Math.max(20, w * 0.032);
+    const pitchMarginY = Math.max(54, h * 0.070);
     const pitchW = w - pitchMarginX * 2;
     const pitchH = h - pitchMarginY * 2;
 
@@ -539,16 +385,22 @@ export class FootballManager2DMatchEngine {
     // 2. Saha Beyaz Çizgileri & Kaleler
     this.drawPitchMarkings(ctx, pitchMarginX, pitchMarginY, pitchW, pitchH);
 
-    // 3. 22 Oyuncu Jetonu (Her iki takımın tüm futbolcuları eksiksiz sahada)
+    // 3. Taktiksel Çizgiler (Pas Yörüngesi, Koşu Okları, Pres Halkaları)
+    this.drawTacticalOverlays(ctx, toScreenX, toScreenY);
+
+    // 4. 22 Oyuncu Jetonu (FM24 Pro Tokens, Yön Üçgeni, Kondisyon, Reyting)
     this.drawPlayers(ctx, toScreenX, toScreenY);
 
-    // 4. Ultra Belirgin & Parlak Futbol Topu (Glow, Hız İzi, Gölge)
+    // 5. Ultra Belirgin & Parlak Futbol Topu (Glow, Hız İzi, Gölge)
     this.drawHighVisibilityBall(ctx, toScreenX, toScreenY);
 
-    // 5. Gol Kutlaması & Konfeti Efektleri
+    // 6. Gol Kutlaması & Konfeti Efektleri
     this.drawGoalCelebration(ctx, w, h, toScreenX, toScreenY);
 
-    // 6. FM Yedek Kulübesi Oyuncu Puan Tabloları (Sol ve Sağ Yan Paneller)
+    // 6.1. Duran Top & Hakem Kararları Yayın Bildirimi (Faul, Taç, Korner, Aut, Ofsayt, Penaltı)
+    this.drawSetPieceOverlay(ctx, w, h);
+
+    // 7. FM Dugout Yedek Kulübesi Oyuncu Puan & Kondisyon Tabloları (Sol ve Sağ Yan Paneller)
     this.drawFMDugoutPanels(ctx, w, pitchMarginX, pitchMarginY, pitchH);
   }
 
@@ -571,7 +423,7 @@ export class FootballManager2DMatchEngine {
 
   private drawPitchMarkings(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
     ctx.save();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.88)';
     ctx.lineWidth = Math.max(2, w * 0.0035);
 
     // Dış Çerçeve
@@ -655,92 +507,105 @@ export class FootballManager2DMatchEngine {
   }
 
   /**
-   * Ultra Belirgin & Parlak Futbol Topu (FM Pro Match Ball)
-   * Yüksek kontrast, neon altın çerçeve ve nabız gibi atan taktiksel hale
+   * Taktiksel Çizgiler: Canlı Ofsayt Çizgisi, Ara Pası Yörüngesi ve Hücum Koşusu Oku
    */
-  private drawHighVisibilityBall(
+  private drawTacticalOverlays(
     ctx: CanvasRenderingContext2D,
     toX: (px: number) => number,
     toY: (py: number) => number
   ) {
-    const sx = toX(this.ballX);
-    const sy = toY(this.ballY);
-    // Belirginlik için top yarıçapı büyütüldü
-    const radius = Math.max(11, Math.min(16, this.canvas.width * 0.01));
-
-    // 1. Dinamik Hız İzi (Speed Streaks)
-    this.ballTrail.forEach((t) => {
-      ctx.beginPath();
-      ctx.fillStyle = `rgba(250, 204, 21, ${t.alpha * 0.35})`;
-      ctx.arc(toX(t.x), toY(t.y), radius * 0.8, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // 2. 3D Zemin Gölgesi (Yükseklikle küçülür ve solar)
-    const shadowScale = Math.max(0.3, 1 - this.ballHeight * 0.25);
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-    ctx.ellipse(sx, sy + this.ballHeight * 8, radius * shadowScale * 1.1, radius * 0.5 * shadowScale, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 3. Dış Taktiksel Neon Halkası (Topun yerini anında belli eder)
-    const haloRadius = radius + 4 + Math.sin(this.globalTick * 10) * 2;
-    ctx.beginPath();
-    ctx.arc(sx, sy - this.ballHeight * 8, haloRadius, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(250, 204, 21, 0.75)';
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([4, 4]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // 4. Parlak Futbol Topu Küresi
     ctx.save();
-    ctx.translate(sx, sy - this.ballHeight * 8);
 
-    // Parlak küre gölgesi & aurası
-    ctx.shadowColor = '#facc15';
-    ctx.shadowBlur = 12;
+    // 0. Canlı Sanal Ofsayt Çizgisi (Virtual Broadcast Offside Line - FM VAR)
+    const offsideLineX = this.currentSnapshot?.pitchState?.offsideLineX;
+    const phase = this.currentSnapshot?.pitchState?.phase;
+    const showOffside = offsideLineX !== undefined && (phase === 'THROUGH_BALL' || phase === 'WING_ATTACK' || phase === 'BOX_DANGER' || phase === 'FREE_KICK_OFFSIDE');
 
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    const ballGrad = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, 1, 0, 0, radius);
-    ballGrad.addColorStop(0, '#ffffff');
-    ballGrad.addColorStop(0.7, '#f8fafc');
-    ballGrad.addColorStop(1, '#e2e8f0');
-    ctx.fillStyle = ballGrad;
-    ctx.fill();
+    if (showOffside && offsideLineX !== undefined) {
+      const offX = toX(offsideLineX);
+      const topY = toY(0);
+      const botY = toY(64);
 
-    // Çift dış çerçeve (Siyah + Neon Altın)
-    ctx.lineWidth = 2.2;
-    ctx.strokeStyle = '#f59e0b';
-    ctx.stroke();
-
-    // 5. Klasik Beşgen Paneller (Siyah + Geometrik Doku)
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.42, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Dış 4 küçük panel noktaları
-    const miniOffsets = [
-      [-radius * 0.55, -radius * 0.5],
-      [radius * 0.55, -radius * 0.5],
-      [-radius * 0.55, radius * 0.5],
-      [radius * 0.55, radius * 0.5]
-    ];
-    miniOffsets.forEach(([ox, oy]) => {
       ctx.beginPath();
-      ctx.arc(ox, oy, radius * 0.22, 0, Math.PI * 2);
-      ctx.fillStyle = '#0f172a';
+      ctx.moveTo(offX, topY);
+      ctx.lineTo(offX, botY);
+      ctx.strokeStyle = phase === 'FREE_KICK_OFFSIDE' ? 'rgba(239, 68, 68, 0.9)' : 'rgba(56, 189, 248, 0.75)';
+      ctx.lineWidth = phase === 'FREE_KICK_OFFSIDE' ? 3 : 2;
+      ctx.setLineDash([5, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Çizginin üst ucunda FM Taktiksel Ofsayt Etiketi
+      const tagText = phase === 'FREE_KICK_OFFSIDE' ? '🚩 OFSAYT!' : '📐 OFSAYT ÇİZGİSİ';
+      ctx.font = '900 10px Inter, system-ui, sans-serif';
+      const tw = ctx.measureText(tagText).width;
+      ctx.fillStyle = phase === 'FREE_KICK_OFFSIDE' ? 'rgba(220, 38, 38, 0.9)' : 'rgba(15, 23, 42, 0.85)';
+      ctx.beginPath();
+      ctx.roundRect(offX - tw / 2 - 6, topY - 18, tw + 12, 16, 4);
       ctx.fill();
+      ctx.strokeStyle = phase === 'FREE_KICK_OFFSIDE' ? '#f87171' : '#38bdf8';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(tagText, offX, topY - 10);
+    }
+
+    // 1. Kilit Pas Yörüngesi (Through Ball or Cross Arc)
+    if (this.passType === 'THROUGH' || this.passType === 'CROSS') {
+      const sx = toX(this.passOrigin.x);
+      const sy = toY(this.passOrigin.y);
+      const ex = toX(this.ballTargetX);
+      const ey = toY(this.ballTargetY);
+      const midX = (sx + ex) / 2;
+      const midY = (sy + ey) / 2 - 25;
+
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.quadraticCurveTo(midX, midY, ex, ey);
+      ctx.strokeStyle = this.passType === 'THROUGH' ? 'rgba(56, 189, 248, 0.7)' : 'rgba(250, 204, 21, 0.7)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([6, 6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // 2. Koşu Yapan Forvetlerin Önünde Beliren Taktiksel Koşu Oku
+    const allPlayers = [...this.homePlayers, ...this.awayPlayers];
+    allPlayers.forEach((p) => {
+      if (p.action === 'SPRINT_RUN') {
+        const px = toX(p.x);
+        const py = toY(p.y);
+        const targetX = toX(p.targetX);
+        const targetY = toY(p.targetY);
+
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(targetX, targetY);
+        ctx.strokeStyle = p.teamIndex === 0 ? 'rgba(96, 165, 250, 0.65)' : 'rgba(248, 113, 113, 0.65)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else if (p.action === 'PRESS' || p.action === 'TACKLE') {
+        // Pres / Müdahale Nabız Halkası
+        const px = toX(p.x);
+        const py = toY(p.y);
+        ctx.beginPath();
+        ctx.arc(px, py, 26 + Math.sin(this.globalTick * 10) * 4, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
     });
 
     ctx.restore();
   }
 
   /**
-   * 22 Oyuncu Jetonu (Her iki takımın 11'er futbolcusu eksiksiz sahada çizilir)
+   * 22 Oyuncu Jetonu (FM24 Pro Tokens, Yön Üçgeni, Kondisyon Çubuğu, Canlı Reyting)
    */
   private drawPlayers(
     ctx: CanvasRenderingContext2D,
@@ -748,7 +613,8 @@ export class FootballManager2DMatchEngine {
     toY: (py: number) => number
   ) {
     const allPlayers = [...this.homePlayers, ...this.awayPlayers];
-    const tokenRadius = Math.max(13, Math.min(21, this.canvas.width * 0.015));
+    // Küçültülmüş, taktiksel netliğe sahip oyuncu jetonları (FM24 2D Pro Tokens)
+    const tokenRadius = Math.max(8.5, Math.min(13.5, this.canvas.width * 0.009));
 
     allPlayers.forEach((p) => {
       const px = toX(p.x);
@@ -761,32 +627,17 @@ export class FootballManager2DMatchEngine {
       if (p.hasBall) {
         const pulse = 1.0 + Math.sin(this.globalTick * 8) * 0.25;
         ctx.beginPath();
-        ctx.arc(px, py, tokenRadius * 1.5 * pulse, 0, Math.PI * 2);
+        ctx.arc(px, py, tokenRadius * 1.55 * pulse, 0, Math.PI * 2);
         ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 3.5;
+        ctx.lineWidth = 2.5;
         ctx.stroke();
-
-        // Taktiksel yön oku
-        const dir = isHome ? 1 : -1;
-        ctx.beginPath();
-        ctx.moveTo(px + dir * (tokenRadius + 6), py);
-        ctx.lineTo(px + dir * (tokenRadius + 14), py);
-        ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-      }
-
-      // Kaleci dalışı efekti
-      if (p.isDiving) {
-        ctx.shadowColor = '#38bdf8';
-        ctx.shadowBlur = 18;
-      } else {
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
-        ctx.shadowBlur = 9;
-        ctx.shadowOffsetY = 3;
       }
 
       // Jeton Gövdesi (FM 2D Token)
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+      ctx.shadowBlur = 7;
+      ctx.shadowOffsetY = 2;
+
       ctx.beginPath();
       ctx.arc(px, py, tokenRadius, 0, Math.PI * 2);
 
@@ -805,37 +656,146 @@ export class FootballManager2DMatchEngine {
       ctx.fillStyle = grad;
       ctx.fill();
 
-      ctx.lineWidth = Math.max(2, tokenRadius * 0.16);
+      ctx.lineWidth = Math.max(1.5, tokenRadius * 0.15);
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
 
+      // Yön Gösteren Burun Üçgeni (Orientation Pointer)
+      const tipX = px + Math.cos(p.heading) * (tokenRadius + 3);
+      const tipY = py + Math.sin(p.heading) * (tokenRadius + 3);
+      const leftX = px + Math.cos(p.heading + 2.5) * (tokenRadius * 0.95);
+      const leftY = py + Math.sin(p.heading + 2.5) * (tokenRadius * 0.95);
+      const rightX = px + Math.cos(p.heading - 2.5) * (tokenRadius * 0.95);
+      const rightY = py + Math.sin(p.heading - 2.5) * (tokenRadius * 0.95);
+
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(leftX, leftY);
+      ctx.lineTo(rightX, rightY);
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
       // Forma Numarası (Squad Number)
       ctx.fillStyle = '#ffffff';
-      ctx.font = `900 ${Math.round(tokenRadius * 0.9)}px Inter, system-ui, sans-serif`;
+      ctx.font = `900 ${Math.max(7, Math.round(tokenRadius * 0.85))}px Inter, system-ui, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(p.number.toString(), px, py);
 
-      // Oyuncu İsim Etiketi (FM Name Tag Underneath)
-      const tagText = p.goals > 0 ? `⚽ ${p.shortName}` : p.shortName;
-      ctx.font = `800 ${Math.max(9, Math.round(tokenRadius * 0.68))}px Inter, system-ui, sans-serif`;
-      const textWidth = ctx.measureText(tagText).width;
-      const tagH = tokenRadius * 0.85;
-      const tagY = py + tokenRadius + 4;
+      // ─── FM DETAYLARI: KONDİSYON (STAMINA) VE İSİM ETİKETİ ───
+      const tagY = py + tokenRadius + 3;
 
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+      // 1. Kondisyon Çubuğu (Stamina Bar)
+      const barW = tokenRadius * 1.6;
+      const barH = 2.5;
+      const staminaRatio = Math.max(0, Math.min(100, p.stamina || 100)) / 100;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+      ctx.fillRect(px - barW / 2, tagY, barW, barH);
+      ctx.fillStyle = staminaRatio > 0.75 ? '#10b981' : staminaRatio > 0.55 ? '#f59e0b' : '#ef4444';
+      ctx.fillRect(px - barW / 2, tagY, barW * staminaRatio, barH);
+
+      // 2. Oyuncu İsim ve Reyting Etiketi (FM Name & Rating Tag)
+      const goalIcon = p.goals > 0 ? '⚽ ' : '';
+      const tagText = `${goalIcon}${p.shortName}`;
+      ctx.font = `800 ${Math.max(8, Math.round(tokenRadius * 0.65))}px Inter, system-ui, sans-serif`;
+      const textWidth = ctx.measureText(tagText).width;
+      const labelH = Math.max(9, tokenRadius * 0.85);
+      const labelY = tagY + barH + 1.5;
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
       ctx.beginPath();
-      ctx.roundRect(px - textWidth / 2 - 5, tagY, textWidth + 10, tagH, 4);
+      ctx.roundRect(px - textWidth / 2 - 4, labelY, textWidth + 8, labelH, 3);
       ctx.fill();
       ctx.strokeStyle = isHome ? '#38bdf8' : '#f87171';
       ctx.lineWidth = 1;
       ctx.stroke();
 
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(tagText, px, tagY + tagH / 2 + 1);
+      ctx.fillText(tagText, px, labelY + labelH / 2 + 0.5);
 
       ctx.restore();
     });
+  }
+
+  /**
+   * Ultra Belirgin & Parlak Futbol Topu (FM Pro Match Ball)
+   */
+  private drawHighVisibilityBall(
+    ctx: CanvasRenderingContext2D,
+    toX: (px: number) => number,
+    toY: (py: number) => number
+  ) {
+    const sx = toX(this.ballX);
+    const sy = toY(this.ballY);
+    const radius = Math.max(6.5, Math.min(10.5, this.canvas.width * 0.007));
+
+    // 1. Dinamik Hız İzi (Speed Streaks)
+    this.ballTrail.forEach((t) => {
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(250, 204, 21, ${t.alpha * 0.35})`;
+      ctx.arc(toX(t.x), toY(t.y), radius * 0.8, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // 2. 3D Zemin Gölgesi
+    const shadowScale = Math.max(0.3, 1 - this.ballHeight * 0.25);
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.ellipse(sx, sy + this.ballHeight * 8, radius * shadowScale * 1.1, radius * 0.5 * shadowScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Dış Taktiksel Neon Pusula Halkası
+    const haloRadius = radius + 3 + Math.sin(this.globalTick * 10) * 1.5;
+    ctx.beginPath();
+    ctx.arc(sx, sy - this.ballHeight * 8, haloRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.75)';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 4. Parlak Futbol Topu Küresi
+    ctx.save();
+    ctx.translate(sx, sy - this.ballHeight * 8);
+
+    ctx.shadowColor = '#facc15';
+    ctx.shadowBlur = 12;
+
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    const ballGrad = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, 1, 0, 0, radius);
+    ballGrad.addColorStop(0, '#ffffff');
+    ballGrad.addColorStop(0.7, '#f8fafc');
+    ballGrad.addColorStop(1, '#e2e8f0');
+    ctx.fillStyle = ballGrad;
+    ctx.fill();
+
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = '#f59e0b';
+    ctx.stroke();
+
+    // 5. Beşgen Paneller
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+
+    const miniOffsets = [
+      [-radius * 0.55, -radius * 0.5],
+      [radius * 0.55, -radius * 0.5],
+      [-radius * 0.55, radius * 0.5],
+      [radius * 0.55, radius * 0.5]
+    ];
+    miniOffsets.forEach(([ox, oy]) => {
+      ctx.beginPath();
+      ctx.arc(ox, oy, radius * 0.22, 0, Math.PI * 2);
+      ctx.fillStyle = '#0f172a';
+      ctx.fill();
+    });
+
+    ctx.restore();
   }
 
   private drawGoalCelebration(
@@ -886,6 +846,92 @@ export class FootballManager2DMatchEngine {
     ctx.restore();
   }
 
+  private drawSetPieceOverlay(ctx: CanvasRenderingContext2D, w: number, h: number) {
+    const phase = this.currentSnapshot?.pitchState?.phase;
+    if (!phase) return;
+
+    let title = '';
+    let sub = '';
+    let strokeColor = '#3b82f6';
+    let glowColor = 'rgba(59, 130, 246, 0.5)';
+    let titleColor = '#60a5fa';
+
+    switch (phase) {
+      case 'FREE_KICK_OFFSIDE':
+        title = '🚩 OFSAYT!';
+        sub = 'Yan hakemin bayrağı havada • Endirekt Serbest Vuruş';
+        strokeColor = '#ef4444';
+        glowColor = 'rgba(239, 68, 68, 0.5)';
+        titleColor = '#f87171';
+        break;
+      case 'FREE_KICK':
+        title = '⚠️ FAUL!';
+        sub = 'Hakem düdüğünü çaldı • Serbest Vuruş';
+        strokeColor = '#f59e0b';
+        glowColor = 'rgba(245, 158, 11, 0.5)';
+        titleColor = '#fbbf24';
+        break;
+      case 'THROW_IN':
+        title = '👟 TAÇ!';
+        sub = 'Top taca çıktı • Taç Atışı';
+        strokeColor = '#06b6d4';
+        glowColor = 'rgba(6, 182, 212, 0.5)';
+        titleColor = '#38bdf8';
+        break;
+      case 'GOAL_KICK':
+        title = '🥅 AUT!';
+        sub = 'Top auta çıktı • Kale Vuruşu';
+        strokeColor = '#64748b';
+        glowColor = 'rgba(100, 116, 139, 0.5)';
+        titleColor = '#cbd5e1';
+        break;
+      case 'SET_PIECE_CORNER':
+        title = '🚩 KORNER!';
+        sub = 'Savunmaya çarpan top kornere çıktı • Köşe Vuruşu';
+        strokeColor = '#eab308';
+        glowColor = 'rgba(234, 179, 8, 0.5)';
+        titleColor = '#facc15';
+        break;
+      case 'PENALTY_KICK':
+        title = '🎯 PENALTI!';
+        sub = 'Ceza sahası içinde ihlal • Beyaz Nokta!';
+        strokeColor = '#dc2626';
+        glowColor = 'rgba(220, 38, 38, 0.6)';
+        titleColor = '#f87171';
+        break;
+      default:
+        return;
+    }
+
+    ctx.save();
+    const bannerW = Math.min(560, w * 0.65);
+    const bannerH = 78;
+    const bx = (w - bannerW) / 2;
+    const by = h * 0.36;
+
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = 28;
+    ctx.fillStyle = 'rgba(11, 17, 32, 0.94)';
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bannerW, bannerH, 14);
+    ctx.fill();
+
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    ctx.fillStyle = titleColor;
+    ctx.font = '900 28px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(title, w / 2, by + 34);
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '700 15px Inter, system-ui, sans-serif';
+    ctx.fillText(sub, w / 2, by + 61);
+
+    ctx.restore();
+  }
+
   private drawFMDugoutPanels(
     ctx: CanvasRenderingContext2D,
     w: number,
@@ -894,7 +940,7 @@ export class FootballManager2DMatchEngine {
     pitchH: number
   ) {
     const panelW = pitchX - 16;
-    if (panelW > 110) {
+    if (panelW > 115) {
       this.drawSingleDugout(ctx, 10, pitchY, panelW, pitchH, this.homePlayers, true);
       this.drawSingleDugout(ctx, w - panelW - 10, pitchY, panelW, pitchH, this.awayPlayers, false);
     }
@@ -927,16 +973,24 @@ export class FootballManager2DMatchEngine {
     players.slice(0, 11).forEach((p, i) => {
       const ry = y + 24 + i * rowH;
 
+      // Forma No
       ctx.fillStyle = '#94a3b8';
       ctx.font = '800 10px Inter, system-ui, sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(`${p.number}`, x + 6, ry + rowH * 0.65);
 
+      // İsim
       ctx.fillStyle = '#ffffff';
       ctx.font = '700 10px Inter, system-ui, sans-serif';
-      ctx.fillText(p.shortName.slice(0, 10), x + 20, ry + rowH * 0.65);
+      ctx.fillText(p.shortName.slice(0, 9), x + 20, ry + rowH * 0.65);
 
-      const ratingVal = p.rating.toFixed(1);
+      // Kondisyon Mini Çubuğu (Stamina)
+      const stRatio = Math.max(0, Math.min(100, p.stamina || 100)) / 100;
+      ctx.fillStyle = stRatio > 0.75 ? '#10b981' : stRatio > 0.55 ? '#f59e0b' : '#ef4444';
+      ctx.fillRect(x + w - 46, ry + rowH * 0.45, 16 * stRatio, 4);
+
+      // Reyting Kutusu
+      const ratingVal = (p.rating || 6.8).toFixed(1);
       const isHigh = p.rating >= 7.5;
       ctx.fillStyle = isHigh ? '#10b981' : p.rating >= 6.8 ? '#f59e0b' : '#64748b';
       ctx.fillRect(x + w - 24, ry + 2, 20, rowH - 4);

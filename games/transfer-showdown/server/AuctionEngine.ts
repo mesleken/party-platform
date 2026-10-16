@@ -8,6 +8,147 @@ import {
 import { PLAYER_DATABASE } from '../shared/player-database.js';
 import { SquadValidator } from './SquadValidator.js';
 
+export class ShuffledDeck<T> {
+  private items: T[];
+  private currentIndex: number = 0;
+
+  constructor(source: T[]) {
+    this.items = [...source];
+    this.shuffle();
+  }
+
+  public shuffle(): void {
+    for (let i = this.items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.items[i], this.items[j]] = [this.items[j], this.items[i]];
+    }
+    this.currentIndex = 0;
+  }
+
+  public draw(): T {
+    if (this.currentIndex >= this.items.length) {
+      this.shuffle();
+    }
+    return this.items[this.currentIndex++];
+  }
+}
+
+/**
+ * Ağırlıklı Kart Destesi:
+ * - Elit ve yüksek reytingli yıldız oyuncuların (90+, 87+, İkonlar) paketlerde çıkma şansını belirgin şekilde artırır.
+ * - Süper Lig'in 4 Büyükler kulüplerindeki (Galatasaray, Fenerbahçe, Beşiktaş, Trabzonspor) oyuncuların çıkma şansını katlar.
+ * - Yurt dışındaki popüler Türk yıldızlarını (Arda Güler, Kenan Yıldız, Hakan Çalhanoğlu vb.) öne çıkarır.
+ * - Fisher-Yates karıştırması ve son çekilen kart hafızası sayesinde aynı kartların üst üste tekrar etmesini engeller.
+ */
+export class WeightedCardDeck {
+  private pool: PlayerCard[];
+  private shuffled: PlayerCard[] = [];
+  private currentIndex: number = 0;
+  private recentIds: string[] = [];
+  private readonly maxRecentMemory = 16;
+
+  constructor(baseCards: PlayerCard[]) {
+    this.pool = this.buildWeightedPool(baseCards);
+    this.shuffle();
+  }
+
+  private buildWeightedPool(cards: PlayerCard[]): PlayerCard[] {
+    const weighted: PlayerCard[] = [];
+    for (const card of cards) {
+      const weight = this.calculateCardWeight(card);
+      for (let w = 0; w < weight; w++) {
+        weighted.push(card);
+      }
+    }
+    return weighted;
+  }
+
+  private calculateCardWeight(card: PlayerCard): number {
+    const clubLower = card.club.toLowerCase();
+    const isBig4 =
+      clubLower.includes('galatasaray') ||
+      clubLower.includes('fenerbah') ||
+      clubLower.includes('beşiktaş') ||
+      clubLower.includes('besiktas') ||
+      clubLower.includes('trabzon');
+
+    const isTurkStar = card.nationality === 'Türkiye' && card.ovr >= 76 && !isBig4;
+
+    let ratingWeight = 1.0;
+    if (card.category === 'icon') {
+      ratingWeight = 3.6;
+    } else if (card.ovr >= 90) {
+      ratingWeight = 3.8;
+    } else if (card.ovr >= 87) {
+      ratingWeight = 3.0;
+    } else if (card.ovr >= 84) {
+      ratingWeight = 2.2;
+    } else if (card.ovr >= 82) {
+      ratingWeight = 1.6;
+    } else if (card.ovr >= 80) {
+      ratingWeight = 1.2;
+    } else if (card.ovr >= 78) {
+      ratingWeight = 0.9;
+    } else {
+      ratingWeight = 0.6;
+    }
+
+    let multiplier = 1.0;
+    if (isBig4) {
+      multiplier *= 3.5;
+    } else if (isTurkStar) {
+      multiplier *= 2.4;
+    }
+
+    return Math.max(1, Math.round(ratingWeight * multiplier * 2));
+  }
+
+  public shuffle(): void {
+    this.shuffled = [...this.pool];
+    for (let i = this.shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.shuffled[i], this.shuffled[j]] = [this.shuffled[j], this.shuffled[i]];
+    }
+    this.currentIndex = 0;
+  }
+
+  public draw(): PlayerCard {
+    if (this.currentIndex >= this.shuffled.length) {
+      this.shuffle();
+    }
+
+    // Aday kartı çek; eğer son 16 pakette yakın zamanda çıktıysa ve destede alternatif varsa sonraya aktar
+    let pickedIndex = this.currentIndex;
+    let attempts = 0;
+    while (
+      attempts < 12 &&
+      pickedIndex < this.shuffled.length &&
+      this.recentIds.includes(this.shuffled[pickedIndex].id)
+    ) {
+      pickedIndex++;
+      attempts++;
+    }
+
+    if (pickedIndex >= this.shuffled.length) {
+      pickedIndex = this.currentIndex;
+    }
+
+    const card = this.shuffled[pickedIndex];
+    if (pickedIndex !== this.currentIndex) {
+      this.shuffled[pickedIndex] = this.shuffled[this.currentIndex];
+      this.shuffled[this.currentIndex] = card;
+    }
+    this.currentIndex++;
+
+    this.recentIds.push(card.id);
+    if (this.recentIds.length > this.maxRecentMemory) {
+      this.recentIds.shift();
+    }
+
+    return card;
+  }
+}
+
 export class AuctionEngine {
   private packs: TransferPack[] = [];
   private currentLotIndex = 0;
@@ -19,42 +160,50 @@ export class AuctionEngine {
   private onLotCompletedCallback?: (lot: AuctionLot) => void;
   private onAuctionFinishedCallback?: () => void;
 
+  private gkDeck!: WeightedCardDeck;
+  private defDeck!: WeightedCardDeck;
+  private midDeck!: WeightedCardDeck;
+  private fwdDeck!: WeightedCardDeck;
+
   constructor(managers: ManagerBudgetState[]) {
     this.managerList = [...managers];
     managers.forEach((m) => this.managers.set(m.sessionId, m));
+    this.initDecks();
     this.preparePackPool();
   }
 
+  private initDecks() {
+    this.gkDeck = new WeightedCardDeck(PLAYER_DATABASE.filter((c) => c.position === 'GK'));
+    this.defDeck = new WeightedCardDeck(PLAYER_DATABASE.filter((c) => c.position === 'DEF'));
+    this.midDeck = new WeightedCardDeck(PLAYER_DATABASE.filter((c) => c.position === 'MID'));
+    this.fwdDeck = new WeightedCardDeck(PLAYER_DATABASE.filter((c) => c.position === 'FWD'));
+  }
+
+  public generatePack(index: number): TransferPack {
+    const gk = this.gkDeck.draw();
+    const def = this.defDeck.draw();
+    const mid = this.midDeck.draw();
+    const fwd = this.fwdDeck.draw();
+
+    return {
+      packIndex: index,
+      packName: `PAKET #${index + 1}`,
+      cards: [gk, def, mid, fwd],
+      openingPrice: 1
+    };
+  }
+
   /**
-   * 135 kişilik zengin havuzdan 60+ Transfer Paketi oluşturulur.
+   * 240+ kişilik genişletilmiş ve güncel havuzdan tamamen rastgele Transfer Paketleri oluşturulur.
+   * Fisher-Yates algoritması ile her pozisyon destesi bağımsızca karıştırılır.
    * Her pakette 4 futbolcu bulunur: [GK, DEF, MID, FWD].
-   * Kullanıcı isteği: Açılış fiyatı yok, doğrudan 1 krediden başlar. Standard/Iconic yazıları yok.
+   * Kullanıcı isteği: Açılış teklifi 1 kredi, her defasında tamamen random paketler.
    */
   private preparePackPool() {
     this.packs = [];
-    const gks = [...PLAYER_DATABASE.filter((c) => c.position === 'GK')].sort(() => Math.random() - 0.5);
-    const defs = [...PLAYER_DATABASE.filter((c) => c.position === 'DEF')].sort(() => Math.random() - 0.5);
-    const mids = [...PLAYER_DATABASE.filter((c) => c.position === 'MID')].sort(() => Math.random() - 0.5);
-    const fwds = [...PLAYER_DATABASE.filter((c) => c.position === 'FWD')].sort(() => Math.random() - 0.5);
-
-    // En az 50-60 paket oluştur
-    const packCount = Math.min(60, Math.max(gks.length, defs.length, mids.length, fwds.length) * 2);
-
-    for (let i = 0; i < packCount; i++) {
-      const gk = gks[i % gks.length];
-      const def = defs[i % defs.length];
-      const mid = mids[i % mids.length];
-      const fwd = fwds[i % fwds.length];
-
-      const cards: [PlayerCard, PlayerCard, PlayerCard, PlayerCard] = [gk, def, mid, fwd];
-      const packNum = i + 1;
-
-      this.packs.push({
-        packIndex: i,
-        packName: `PAKET #${packNum}`,
-        cards,
-        openingPrice: 1 // Kullanıcı isteği: Açılış fiyatı 1 kredi
-      });
+    const initialPackCount = 100;
+    for (let i = 0; i < initialPackCount; i++) {
+      this.packs.push(this.generatePack(i));
     }
   }
 
@@ -71,9 +220,14 @@ export class AuctionEngine {
   private openLot(index: number): AuctionLot | null {
     // İki menajerin de 11'er oyuncusu dolduysa açık artırma biter
     const allFull = this.managerList.length >= 2 && this.managerList.every((m) => m.rosterCount >= 11);
-    if (allFull || index >= this.packs.length) {
+    if (allFull) {
       if (this.onAuctionFinishedCallback) this.onAuctionFinishedCallback();
       return null;
+    }
+
+    // Gerekirse havuzdan yeni rastgele paket üret (asla tükenmez)
+    while (index >= this.packs.length) {
+      this.packs.push(this.generatePack(this.packs.length));
     }
 
     const pack = this.packs[index];

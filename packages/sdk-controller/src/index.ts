@@ -166,6 +166,14 @@ export class ControllerSDK {
     this.room?.send('SHOWDOWN_ALL_OUT_ATTACK');
   }
 
+  public sendShowdownLiveTactics(action: any) {
+    this.room?.send('SHOWDOWN_LIVE_TACTICS', action);
+  }
+
+  public sendShowdownShout(shout: string) {
+    this.room?.send('SHOWDOWN_SHOUT', { shout });
+  }
+
   public get sessionId(): string | undefined {
     return this.room?.sessionId;
   }
