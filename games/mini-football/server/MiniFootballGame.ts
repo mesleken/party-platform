@@ -61,15 +61,15 @@ export class MiniFootballGame {
       p.controlledPlayerId = assigned ? assigned.id : '';
     });
 
-    // 2. Start 60Hz authoritative loop
+    // 2. Start 30Hz authoritative loop (optimized for low CPU usage & smooth client interpolation)
     this.lastTickTime = Date.now();
     this.tickInterval = setInterval(() => {
       const now = Date.now();
-      const dt = Math.min(0.05, (now - this.lastTickTime) / 1000);
+      const dt = Math.min(0.066, (now - this.lastTickTime) / 1000);
       this.lastTickTime = now;
 
       this.matchManager.update(dt);
-    }, 1000 / 60);
+    }, 1000 / 30);
 
     console.log(
       `[MiniFootballGame] Maç başladı! (${fieldPlayersPerTeam}v${fieldPlayersPerTeam}, Mavi: ${blueCount}, Kırmızı: ${redCount})`
@@ -79,7 +79,7 @@ export class MiniFootballGame {
   public handleInput(client: Client, input: FootballInput) {
     if (this.room.state.activeGameId !== 'mini-football') return;
 
-    const dt = 1 / 60;
+    const dt = 1 / 30;
     this.matchManager.handlePlayerInput(client.sessionId, input, dt);
   }
 

@@ -40,6 +40,12 @@ export class TransferShowdownGame {
   private currentMinute = 0;
   private matchScore: [number, number] = [0, 0];
   private isDestroyed = false;
+  private cachedSynergies: [TeamSynergy, TeamSynergy] | null = null;
+  private lastBroadcastSec = -1;
+
+  public invalidateSynergies() {
+    this.cachedSynergies = null;
+  }
 
   constructor(room: Room<any>) {
     this.room = room;
@@ -255,6 +261,7 @@ export class TransferShowdownGame {
 
     this.phase = 'TACTICS';
     this.phaseTimeLeft = 120; // Kullanıcı isteği: Acele ettirmeyen 2 dakikalık taktik ve kadro kurma süresi
+    this.invalidateSynergies();
     this.broadcastState();
   }
 
@@ -278,6 +285,7 @@ export class TransferShowdownGame {
     } else {
       tactics.isReady = true;
     }
+    this.invalidateSynergies();
 
     // Kullanıcı kuralı: "Taktik ekranında iki oyuncu da hazır derse simülasyon direkt başlasın."
     const activeManagers = Array.from(this.managers.values());
@@ -346,6 +354,7 @@ export class TransferShowdownGame {
     if (tacticsUpdate.defensiveLine) tactics.defensiveLine = tacticsUpdate.defensiveLine;
     if (tacticsUpdate.mentality) tactics.mentality = tacticsUpdate.mentality;
     tactics.isReady = true;
+    this.invalidateSynergies();
 
     if (this.fmEngine) {
       this.fmEngine.updateLiveTactics(manager.teamIndex, {
@@ -388,6 +397,7 @@ export class TransferShowdownGame {
       if (action.playstyle) tactics.playstyle = action.playstyle;
       if (action.defensiveLine) tactics.defensiveLine = action.defensiveLine;
     }
+    this.invalidateSynergies();
 
     if (this.fmEngine) {
       this.fmEngine.updateLiveTactics(manager.teamIndex, action);
@@ -414,6 +424,7 @@ export class TransferShowdownGame {
       tactics.mentality = 'all_out_attack';
       tactics.allOutAttack = true;
     }
+    this.invalidateSynergies();
     this.fmEngine.updateLiveTactics(manager.teamIndex, { mentality: 'all_out_attack' });
     this.broadcastState();
   }
@@ -446,8 +457,12 @@ export class TransferShowdownGame {
     if (this.phase === 'AUCTION') {
       if (this.auctionEngine) {
         this.auctionEngine.tick(deltaSec);
-        // Zamanlayıcı ve teklif güncellemesi için düzenli broadcast
-        this.broadcastState();
+        // Zamanlayıcı saniyesi değiştiğinde broadcast yap (CPU ve bant genişliği tasarrufu)
+        const curSec = Math.floor(this.auctionEngine.getCurrentLot()?.timeLeft || 0);
+        if (curSec !== this.lastBroadcastSec) {
+          this.lastBroadcastSec = curSec;
+          this.broadcastState();
+        }
       }
     } else if (this.phase === 'TACTICS') {
       this.phaseTimeLeft -= deltaSec;
@@ -461,7 +476,11 @@ export class TransferShowdownGame {
           this.broadcastState();
         }
       } else {
-        this.broadcastState();
+        const curSec = Math.ceil(this.phaseTimeLeft);
+        if (curSec !== this.lastBroadcastSec) {
+          this.lastBroadcastSec = curSec;
+          this.broadcastState();
+        }
       }
     } else if (this.phase === 'MATCH_FIRST_HALF') {
       if (this.fmEngine) {
@@ -484,7 +503,11 @@ export class TransferShowdownGame {
         this.phaseTimeLeft = 0;
         this.startSecondHalf();
       } else {
-        this.broadcastState();
+        const curSec = Math.ceil(this.phaseTimeLeft);
+        if (curSec !== this.lastBroadcastSec) {
+          this.lastBroadcastSec = curSec;
+          this.broadcastState();
+        }
       }
     } else if (this.phase === 'MATCH_SECOND_HALF') {
       if (this.fmEngine) {
@@ -506,7 +529,11 @@ export class TransferShowdownGame {
       if (this.phaseTimeLeft <= 0) {
         this.phaseTimeLeft = 0;
       }
-      this.broadcastState();
+      const curSec = Math.ceil(this.phaseTimeLeft);
+      if (curSec !== this.lastBroadcastSec) {
+        this.lastBroadcastSec = curSec;
+        this.broadcastState();
+      }
     }
   }
 
@@ -518,19 +545,30 @@ export class TransferShowdownGame {
     this.managerTactics.forEach((v, k) => (tacticsObj[k] = v));
 
     let synergies: [TeamSynergy, TeamSynergy];
+    if (this.cachedSynergies) {
+      synergies = this.cachedSynergies;
+    } else {
+      const managerList = Array.from(this.managers.values());
+      const m0 = managerList.find((m) => m.teamIndex === 0) || managerList[0];
+      const m1 = managerList.find((m) => m.teamIndex === 1) || managerList[1];
+      const t0 = m0 ? this.managerTactics.get(m0.sessionId) : null;
+      const t1 = m1 ? this.managerTactics.get(m1.sessionId) : null;
+      const syn0Raw = (m0 && t0)
+        ? calculateTeamSynergy(t0, m0.cards)
+        : { attack: 75, midfield: 75, defense: 75, goalkeeping: 75, chemistry: 75, overall: 75, attackStars: 2 as const, midfieldStars: 2 as const, defenseStars: 2 as const };
+      const syn1Raw = (m1 && t1)
+        ? calculateTeamSynergy(t1, m1.cards)
+        : { attack: 75, midfield: 75, defense: 75, goalkeeping: 75, chemistry: 75, overall: 75, attackStars: 2 as const, midfieldStars: 2 as const, defenseStars: 2 as const };
+      const adjusted = adjustComparativeStars(syn0Raw, syn1Raw);
+      synergies = [adjusted.team0, adjusted.team1];
+      this.cachedSynergies = synergies;
+    }
+
     const managerList = Array.from(this.managers.values());
     const m0 = managerList.find((m) => m.teamIndex === 0) || managerList[0];
     const m1 = managerList.find((m) => m.teamIndex === 1) || managerList[1];
     const t0 = m0 ? this.managerTactics.get(m0.sessionId) : null;
     const t1 = m1 ? this.managerTactics.get(m1.sessionId) : null;
-    const syn0Raw = (m0 && t0)
-      ? calculateTeamSynergy(t0, m0.cards)
-      : { attack: 75, midfield: 75, defense: 75, goalkeeping: 75, chemistry: 75, overall: 75, attackStars: 2 as const, midfieldStars: 2 as const, defenseStars: 2 as const };
-    const syn1Raw = (m1 && t1)
-      ? calculateTeamSynergy(t1, m1.cards)
-      : { attack: 75, midfield: 75, defense: 75, goalkeeping: 75, chemistry: 75, overall: 75, attackStars: 2 as const, midfieldStars: 2 as const, defenseStars: 2 as const };
-    const adjusted = adjustComparativeStars(syn0Raw, syn1Raw);
-    synergies = [adjusted.team0, adjusted.team1];
 
     // FM Motor Snapshot Verileri
     const fmState = this.fmEngine ? this.fmEngine.getSnapshotState() : null;
@@ -573,6 +611,7 @@ export class TransferShowdownGame {
   }
 
   private broadcastState() {
+    this.lastBroadcastSec = -1;
     const snapshot = this.getSnapshot();
     this.room.broadcast('SHOWDOWN_SNAPSHOT', snapshot);
   }

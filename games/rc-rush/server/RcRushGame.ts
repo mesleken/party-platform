@@ -209,11 +209,15 @@ export class RcRushGame {
     this.elapsedMs = 0;
     this.raceStartTime = 0;
 
-    // 30Hz simülasyon döngüsü
+    // 30Hz simülasyon döngüsü, 15Hz snapshot yayını (düşük CPU & bant genişliği optimizasyonu)
     const dt = 1 / 30;
+    let tickCount = 0;
     this.interval = setInterval(() => {
       this.update(dt);
-      this.broadcastSnapshot();
+      tickCount++;
+      if (tickCount % 2 === 0 || this.phase === 'countdown' || this.phase === 'completed') {
+        this.broadcastSnapshot();
+      }
     }, 1000 / 30);
   }
 
