@@ -28,7 +28,9 @@
     "@types/express": "^5.0.6",
     "@types/node": "26.6.3",
     "concurrently": "^10.0.5",
+    "controller-runtime": "workspace:*",
     "nodemon": "^3.1.14",
+    "screen-runtime": "workspace:*",
     "tsup": "8.5.1",
     "tsx": "4.23.15",
     "typescript": "7.0.2"

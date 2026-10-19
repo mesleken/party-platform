@@ -392,7 +392,13 @@ async function bootstrap() {
   const winnerName = document.getElementById('winner-name')!;
 
   try {
-    const sdk = new ScreenSDK(`http://${window.location.hostname}:2567`);
+    const serverUrl =
+      (import.meta as any).env?.VITE_SERVER_URL ||
+      (window.location.port === '5173'
+        ? `http://${window.location.hostname}:2567`
+        : `${window.location.protocol}//${window.location.host}`);
+
+    const sdk = new ScreenSDK(serverUrl);
     const roomCode = await sdk.createSession();
 
     statusView.style.display = 'none';
@@ -401,7 +407,13 @@ async function bootstrap() {
     gameRoomCode.innerText = `ODA: ${roomCode}`;
 
     // QR Kod Oluştur
-    const joinUrl = `${window.location.protocol}//${window.location.hostname}:5174/join?code=${roomCode}`;
+    const controllerBase =
+      (import.meta as any).env?.VITE_CONTROLLER_URL ||
+      (window.location.port === '5173'
+        ? `${window.location.protocol}//${window.location.hostname}:5174/join`
+        : `${window.location.protocol}//${window.location.host}/play`);
+
+    const joinUrl = `${controllerBase}?code=${roomCode}`;
     await QRCode.toCanvas(qrCanvas, joinUrl, {
       width: 120,
       margin: 1,

@@ -107,7 +107,13 @@ const GAME_METAS: Record<string, {
   }
 };
 
-const sdk = new ControllerSDK(`http://${window.location.hostname}:2567`);
+const serverUrl =
+  (import.meta as any).env?.VITE_SERVER_URL ||
+  (window.location.port === '5174'
+    ? `http://${window.location.hostname}:2567`
+    : `${window.location.protocol}//${window.location.host}`);
+
+const sdk = new ControllerSDK(serverUrl);
 
 export function App() {
   const [view, setView] = useState<'join' | 'connected'>('join');

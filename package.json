@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "start": "node apps/server/dist/index.js",
     "lint": "turbo run lint"
   },
   "keywords": [],
