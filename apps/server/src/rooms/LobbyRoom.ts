@@ -244,6 +244,25 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
       this.lostAndFoundGame?.handleInput(client.sessionId, message);
     });
 
+    this.onMessage('LAF_SELECT_LEVEL', (client, message: { levelIndex: number }) => {
+      if (this.state.activeGameId !== 'lost-and-found') return;
+      if (message && typeof message.levelIndex === 'number') {
+        this.lostAndFoundGame?.setLevel(message.levelIndex);
+      }
+    });
+
+    this.onMessage('RESTART_GAME', (client) => {
+      const player = this.state.players.get(client.sessionId);
+      if (player && !player.isHost) return;
+      if (this.state.activeGameId === 'lost-and-found') {
+        this.lostAndFoundGame?.restartCurrentLevel();
+      } else if (this.state.activeGameId === 'rc-rush') {
+        this.startRcRushGame();
+      } else if (this.state.activeGameId === 'mini-football') {
+        this.startFootballGame();
+      }
+    });
+
     // RC Rush Kontrolleri
     this.onMessage('RC_RUSH_INPUT', (client, message: RcRushInput) => {
       if (this.state.isPaused) return;

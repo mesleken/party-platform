@@ -27,6 +27,7 @@ export class LostAndFoundRenderer3D {
   private plateMeshes = new Map<string, THREE.Mesh>();
   private leverMeshes = new Map<string, THREE.Group>();
   private ringMeshes = new Map<string, THREE.Mesh>();
+  private collectibleMeshes = new Map<string, THREE.Group>();
 
   private powerCoreMesh?: THREE.Mesh;
   private portalMesh?: THREE.Group;
@@ -403,6 +404,66 @@ export class LostAndFoundRenderer3D {
       this.powerCoreMesh.rotation.x += 0.02;
     }
 
+    // 5.5 Update Collectibles (Gems, Gears, Batteries)
+    if (state.collectibles) {
+      for (const item of state.collectibles) {
+        let group = this.collectibleMeshes.get(item.id);
+        if (!group) {
+          group = new THREE.Group();
+          let geo: THREE.BufferGeometry;
+          let mat: THREE.Material;
+          if (item.type === 'ruby') {
+            geo = new THREE.OctahedronGeometry(0.55);
+            mat = new THREE.MeshStandardMaterial({
+              color: 0xef4444,
+              emissive: 0xdc2626,
+              emissiveIntensity: 0.6,
+              roughness: 0.2,
+            });
+          } else if (item.type === 'sapphire') {
+            geo = new THREE.OctahedronGeometry(0.55);
+            mat = new THREE.MeshStandardMaterial({
+              color: 0x06b6d4,
+              emissive: 0x0284c7,
+              emissiveIntensity: 0.6,
+              roughness: 0.2,
+            });
+          } else if (item.type === 'battery') {
+            geo = new THREE.CylinderGeometry(0.28, 0.28, 0.9, 12);
+            mat = new THREE.MeshStandardMaterial({
+              color: 0x22c55e,
+              emissive: 0x16a34a,
+              emissiveIntensity: 0.5,
+              metalness: 0.8,
+            });
+          } else {
+            // Gear / Screw
+            geo = new THREE.TorusGeometry(0.42, 0.16, 8, 16);
+            mat = new THREE.MeshStandardMaterial({
+              color: 0xfacc15,
+              emissive: 0xd97706,
+              emissiveIntensity: 0.5,
+              metalness: 0.6,
+            });
+          }
+          const mesh = new THREE.Mesh(geo, mat);
+          group.add(mesh);
+          group.position.set(item.x, item.y, 0);
+          this.scene.add(group);
+          this.collectibleMeshes.set(item.id, group);
+        }
+
+        if (item.collected) {
+          group.visible = false;
+        } else {
+          group.visible = true;
+          group.rotation.y += 0.04;
+          group.rotation.z += 0.02;
+          group.position.y = item.y + Math.sin(Date.now() * 0.005 + Number(item.id.slice(-1) || 0)) * 0.15;
+        }
+      }
+    }
+
     // 6. Update Players
     for (const p of state.players) {
       const visual = p.role === 'milo' ? this.miloVisual : this.niaVisual;
@@ -532,6 +593,8 @@ export class LostAndFoundRenderer3D {
   public destroy(): void {
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     window.removeEventListener('resize', this.onWindowResize);
+    this.collectibleMeshes.forEach((mesh) => this.scene.remove(mesh));
+    this.collectibleMeshes.clear();
     this.renderer.dispose();
   }
 }

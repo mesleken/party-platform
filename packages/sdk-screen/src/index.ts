@@ -53,6 +53,10 @@ export class ScreenSDK {
   public onRcRushEvent: (event: any) => void = () => {};
   public onShowdownState: (state: any) => void = () => {};
 
+  public send(type: string, message?: any) {
+    this.room?.send(type, message);
+  }
+
   public selectGame(gameId: string) {
     this.room?.send('SELECT_GAME', { gameId });
   }

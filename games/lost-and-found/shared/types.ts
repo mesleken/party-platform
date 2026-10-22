@@ -8,6 +8,8 @@ export interface PlayerInput {
   interact?: boolean;
   abilityActive?: boolean;
   aimAngle?: number; // radians
+  pingEmote?: string; // Quick communication emote
+  recover?: boolean; // respawn at checkpoint
   miniGameInput?: {
     tunerValue?: number; // 0 - 100 (for Milo)
     phaseAngle?: number; // 0 - 360 (for Nia)
@@ -94,11 +96,40 @@ export interface MiniGameSession {
   isUnlocked: boolean;
 }
 
+export interface LostItem {
+  id: string;
+  x: number;
+  y: number;
+  type: 'gear' | 'ruby' | 'sapphire' | 'screw' | 'battery';
+  collected: boolean;
+  collectedBy?: 'milo' | 'nia';
+}
+
+export interface LevelInfo {
+  index: number;
+  id: string;
+  name: string;
+  tagline: string;
+  stars: number; // 0 - 3
+  isUnlocked: boolean;
+  bestTimeMs?: number;
+  totalCollectibles: number;
+}
+
+export interface CoOpPing {
+  playerId: string;
+  role: 'milo' | 'nia';
+  text: string;
+  timestamp: number;
+}
+
 export interface LostAndFoundSnapshot {
   gameId: 'lost-and-found';
   phase: LostAndFoundPhase;
   tick: number;
   elapsedMs: number;
+  currentLevelIndex: number;
+  levelName: string;
   objectiveText: string;
   players: PlayerSnapshot[];
   crates: PhysicsCrate[];
@@ -107,9 +138,14 @@ export interface LostAndFoundSnapshot {
   pressurePlates: PressurePlate[];
   levers: Lever[];
   anchorRings: AnchorRing[];
+  collectibles: LostItem[];
+  collectedCount: number;
+  totalCollectibles: number;
+  stars: number;
   miniGame: MiniGameSession;
   vaultDoorOpen: boolean;
   completionTimeMs?: number;
+  activePings?: CoOpPing[];
 }
 
 export interface LostAndFoundConfig {

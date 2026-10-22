@@ -43,10 +43,33 @@ export function LostAndFoundGamepad({
 
   const role = myPlayer?.role || 'milo';
   const isMilo = role === 'milo';
+  const partnerPlayer = matchState?.players?.find((p) => p.id !== myPlayer?.id);
 
   const sendInput = (partial: Partial<PlayerInput>) => {
     currentInput.current = { ...currentInput.current, ...partial };
     sdk.sendLostAndFoundInput(currentInput.current);
+  };
+
+  const handlePing = (emoteText: string) => {
+    if (navigator.vibrate) navigator.vibrate(25);
+    sdk.sendLostAndFoundInput({
+      moveX: currentInput.current.moveX,
+      pingEmote: emoteText,
+    });
+  };
+
+  const handleRecover = () => {
+    if (navigator.vibrate) navigator.vibrate([30, 40]);
+    sdk.sendLostAndFoundInput({
+      moveX: 0,
+      recover: true,
+    });
+    setTimeout(() => {
+      sdk.sendLostAndFoundInput({
+        moveX: 0,
+        recover: false,
+      });
+    }, 200);
   };
 
   const handleMoveStart = (dir: number, e?: any) => {
@@ -101,9 +124,9 @@ export function LostAndFoundGamepad({
     });
   };
 
-  const themeColor = isMilo ? '#38bdf8' : '#facc15';
+  const themeColor = isMilo ? '#f59e0b' : '#06b6d4';
   const roleName = isMilo ? 'MILO' : 'NIA';
-  const roleAbility = isMilo ? '🧲 MIKNATIS ELDİVENİ' : '🪝 ENERJİ KANCASI';
+  const roleAbility = isMilo ? '🧲 MIKNATIS ELDİVENİ' : '🪝 MAKARALI KANCA';
 
   // ─── 1. BÖLÜM BİTTİ (ZAFER EKRANI) ───
   if (matchState?.phase === 'completed') {
@@ -314,36 +337,49 @@ export function LostAndFoundGamepad({
         overflow: 'hidden',
       }}
     >
-      {/* Top HUD */}
+      {/* Top Header Card */}
       <div
         style={{
           width: '100%',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: 'rgba(255,255,255,0.05)',
+          background: 'rgba(255,255,255,0.06)',
           padding: '0.6rem 1rem',
-          borderRadius: '0.8rem',
-          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '1rem',
+          border: `1.5px solid ${themeColor}`,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <span style={{ fontSize: '1.4rem' }}>{isMilo ? '🧲' : '🪝'}</span>
+          <span style={{ fontSize: '1.6rem' }}>{isMilo ? '🧲' : '🪝'}</span>
           <div>
             <div style={{ fontSize: '1rem', fontWeight: 900, color: themeColor }}>
               {roleName} ({myNickname})
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-              {roleAbility}
+            <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+              {roleAbility} {partnerPlayer ? `• Partner: ${partnerPlayer.nickname || (partnerPlayer.role === 'nia' ? 'Nia' : 'Milo')}` : ''}
             </div>
           </div>
         </div>
 
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>GÖREV</div>
-          <div style={{ fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 700 }}>
-            {matchState?.vaultDoorOpen ? 'Portala Koş!' : 'Bulmacayı Çöz!'}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button
+            type="button"
+            onClick={handleRecover}
+            title="Güvenli Başlangıca Dön"
+            style={{
+              background: 'rgba(239, 68, 68, 0.25)',
+              border: '1px solid rgba(239, 68, 68, 0.6)',
+              color: '#fca5a5',
+              padding: '0.35rem 0.6rem',
+              borderRadius: '0.6rem',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+            }}
+          >
+            🔄 BAŞA DÖN
+          </button>
         </div>
       </div>
 
@@ -374,6 +410,7 @@ export function LostAndFoundGamepad({
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
+              boxShadow: '0 8px 20px rgba(0,0,0,0.4)',
             }}
             onPointerDown={(e) => handleMoveStart(-1, e)}
             onPointerUp={handleMoveEnd}
@@ -394,6 +431,7 @@ export function LostAndFoundGamepad({
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
+              boxShadow: '0 8px 20px rgba(0,0,0,0.4)',
             }}
             onPointerDown={(e) => handleMoveStart(1, e)}
             onPointerUp={handleMoveEnd}
@@ -440,7 +478,7 @@ export function LostAndFoundGamepad({
             type="button"
             style={{
               height: '85px',
-              background: isMilo ? '#0284c7' : '#d97706',
+              background: isMilo ? '#d97706' : '#0284c7',
               border: `2px solid ${themeColor}`,
               borderRadius: '1.2rem',
               color: 'white',
@@ -450,7 +488,7 @@ export function LostAndFoundGamepad({
               flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
-              boxShadow: `0 6px 18px ${isMilo ? 'rgba(2,132,199,0.4)' : 'rgba(217,119,6,0.4)'}`,
+              boxShadow: `0 6px 18px ${isMilo ? 'rgba(217,119,6,0.5)' : 'rgba(2,132,199,0.5)'}`,
             }}
             onPointerDown={handleAbilityStart}
             onPointerUp={handleAbilityEnd}
@@ -464,11 +502,84 @@ export function LostAndFoundGamepad({
         </div>
       </div>
 
-      {/* Bottom Hint */}
-      <div style={{ textAlign: 'center', fontSize: '0.8rem', color: '#64748b' }}>
-        {isMilo
-          ? 'Metal sandıkları ve güç çekirdeğini çekmek için mıknatısı basılı tut.'
-          : 'Halkalara tutunmak ve uzak kolları çekmek için kancayı basılı tut.'}
+      {/* Co-Op Quick Emote / Ping Bar */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.5rem',
+          width: '100%',
+          justifyContent: 'center',
+          padding: '0.3rem 0',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => handlePing('Buraya Gel!')}
+          style={{
+            flex: 1,
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            color: 'white',
+            padding: '0.5rem 0.2rem',
+            borderRadius: '0.7rem',
+            fontSize: '0.75rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+          }}
+        >
+          📢 GEL!
+        </button>
+        <button
+          type="button"
+          onClick={() => handlePing('Harika!')}
+          style={{
+            flex: 1,
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            color: '#86efac',
+            padding: '0.5rem 0.2rem',
+            borderRadius: '0.7rem',
+            fontSize: '0.75rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+          }}
+        >
+          👍 HARİKA
+        </button>
+        <button
+          type="button"
+          onClick={() => handlePing('Yardım!')}
+          style={{
+            flex: 1,
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            color: '#fca5a5',
+            padding: '0.5rem 0.2rem',
+            borderRadius: '0.7rem',
+            fontSize: '0.75rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+          }}
+        >
+          ❓ YARDIM
+        </button>
+        <button
+          type="button"
+          onClick={() => handlePing('Senkronize ol!')}
+          style={{
+            flex: 1,
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            color: '#fef08a',
+            padding: '0.5rem 0.2rem',
+            borderRadius: '0.7rem',
+            fontSize: '0.75rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+          }}
+        >
+          ⚡ SENKRON
+        </button>
       </div>
     </div>
   );

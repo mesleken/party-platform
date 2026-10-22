@@ -1190,141 +1190,335 @@
       </div>
     </div>
 
-    <!-- 7. LOST & FOUND ADVENTURE VIEW -->
+    <!-- 7. LOST & FOUND ADVENTURE VIEW (WHIMSICAL TOYBOX CO-OP) -->
     <div id="lost-and-found-view" style="display:none; flex:1; flex-direction:column; position:relative; overflow:hidden; background:#0d0f17;">
 
-      <!-- ═══ TOP HUD BAR (Player A — Timer — Player B) ═══ -->
+      <!-- ═══ TOP HUD BAR (Player A — Toybox Header — Player B) ═══ -->
       <div style="position:absolute; top:1rem; left:1.5rem; right:1.5rem; z-index:20; display:flex; justify-content:space-between; align-items:flex-start; pointer-events:none;">
 
-        <!-- Player A (Milo) Card -->
-        <div id="laf-player-a-card" style="min-width:200px; background:rgba(0,0,0,0.55); backdrop-filter:blur(12px); border:1px solid rgba(56,189,248,0.3); border-radius:1rem; padding:0.7rem 1.2rem; color:white;">
-          <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.3rem;">
-            <span style="width:10px; height:10px; border-radius:50%; background:#f97316; display:inline-block;"></span>
-            <span id="laf-player-a-name" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.15em; color:rgba(255,255,255,0.5); font-weight:700;">MILO</span>
+        <!-- Player A (Milo — Mıknatıs) Tag Card -->
+        <div id="laf-player-a-card" class="laf-toy-tag laf-card-milo" style="min-width:210px; padding:0.65rem 1.1rem; color:white; pointer-events:auto;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.25rem;">
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+              <span style="font-size:1.1rem;">🧲</span>
+              <span id="laf-player-a-name" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.12em; color:#f59e0b; font-weight:900;">MILO</span>
+            </div>
+            <span id="laf-player-a-status" style="font-size:0.65rem; font-weight:800; color:#22c55e; background:rgba(34,197,94,0.15); padding:0.15rem 0.45rem; border-radius:0.4rem; border:1px solid rgba(34,197,94,0.3);">🟢 HAZIR</span>
           </div>
-          <div id="laf-player-a-nickname" style="font-size:1.05rem; font-weight:800; color:#f8fafc; margin-bottom:0.25rem;">Oyuncu 1</div>
-          <div style="display:flex; align-items:center; gap:0.4rem;">
-            <span style="font-size:0.9rem;">🧲</span>
-            <span id="laf-player-a-ability" style="font-size:0.8rem; font-weight:700; color:#f97316;">MIKNATIS</span>
+          <div id="laf-player-a-nickname" style="font-size:1.05rem; font-weight:900; color:#f8fafc; margin-bottom:0.2rem; text-shadow:0 2px 4px rgba(0,0,0,0.5);">Oyuncu 1</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.75rem; font-weight:800; color:#f59e0b;">
+            <span>MIKNATIS (ÇEK/İT)</span>
+            <span id="laf-player-a-ability">HAZIR</span>
           </div>
-          <div style="margin-top:0.4rem; height:3px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;">
-            <div id="laf-player-a-cooldown" style="width:100%; height:100%; background:#f97316; border-radius:2px; transition:width 0.2s;"></div>
+          <div style="margin-top:0.35rem; height:5px; background:rgba(255,255,255,0.12); border-radius:3px; overflow:hidden;">
+            <div id="laf-player-a-cooldown" style="width:100%; height:100%; background:linear-gradient(90deg, #f59e0b, #ea580c); border-radius:3px; transition:width 0.2s;"></div>
           </div>
         </div>
 
-        <!-- Center Timer + Level Badge -->
-        <div style="background:rgba(0,0,0,0.55); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.1); border-radius:1.2rem; padding:0.5rem 2rem; text-align:center; color:white;">
-          <div id="laf-level-badge" style="font-size:0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.25em; color:rgba(255,255,255,0.45);">
-            Workshop 01
+        <!-- Center Toybox Header: Level Badge, Timer, Stars, Collectibles -->
+        <div class="laf-toy-tag" style="padding:0.6rem 1.8rem; text-align:center; color:white; display:flex; flex-direction:column; align-items:center; gap:0.25rem; pointer-events:auto; border-color:rgba(255,255,255,0.2);">
+          <!-- Level Name Badge -->
+          <div id="laf-level-badge" style="font-size:0.72rem; font-weight:900; text-transform:uppercase; letter-spacing:0.15em; color:#fde047; text-shadow:0 1px 3px rgba(0,0,0,0.6);">
+            🏷️ BÖLÜM 1: ATÖLYE GİRİŞİ
           </div>
-          <div id="laf-timer" style="font-size:2rem; font-weight:900; font-variant-numeric:tabular-nums; color:white; line-height:1;">
+
+          <!-- Stopwatch Timer -->
+          <div id="laf-timer" style="font-size:2.2rem; font-weight:900; font-family:'Courier New', monospace; color:white; line-height:1; letter-spacing:0.04em; text-shadow:0 0 15px rgba(255,255,255,0.4);">
             00:00
           </div>
-          <div id="laf-phase-badge" style="margin-top:0.2rem; font-size:0.65rem; font-weight:800; text-transform:uppercase; letter-spacing:0.15em; background:#2563eb; color:white; padding:0.15rem 0.6rem; border-radius:0.4rem; display:inline-block;">
-            Oynanıyor
+
+          <!-- Co-Op Live Star Rating & Collectible Counter -->
+          <div style="display:flex; align-items:center; gap:0.9rem; margin-top:0.15rem;">
+            <!-- Stars -->
+            <div id="laf-stars-bar" style="font-size:1.1rem; letter-spacing:0.15rem; filter:drop-shadow(0 0 8px rgba(250,204,21,0.6));">
+              <span id="laf-star-1" style="color:#facc15;">★</span>
+              <span id="laf-star-2" style="color:#facc15;">★</span>
+              <span id="laf-star-3" style="color:#facc15;">★</span>
+            </div>
+
+            <div style="width:1px; height:14px; background:rgba(255,255,255,0.2);"></div>
+
+            <!-- Collectibles -->
+            <div style="font-size:0.8rem; font-weight:900; color:#38bdf8; display:flex; align-items:center; gap:0.3rem;">
+              <span>💎</span>
+              <span id="laf-collectibles-collected">0</span>/<span id="laf-collectibles-total">5</span>
+              <span style="font-size:0.65rem; color:#94a3b8; font-weight:700;">EŞYA</span>
+            </div>
           </div>
         </div>
 
-        <!-- Player B (Nia) Card -->
-        <div id="laf-player-b-card" style="min-width:200px; background:rgba(0,0,0,0.55); backdrop-filter:blur(12px); border:1px solid rgba(250,204,21,0.3); border-radius:1rem; padding:0.7rem 1.2rem; color:white; text-align:right;">
-          <div style="display:flex; align-items:center; justify-content:flex-end; gap:0.5rem; margin-bottom:0.3rem;">
-            <span id="laf-player-b-name" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.15em; color:rgba(255,255,255,0.5); font-weight:700;">NIA</span>
-            <span style="width:10px; height:10px; border-radius:50%; background:#06b6d4; display:inline-block;"></span>
+        <!-- Right Side: Nia Card + Menu Controls -->
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0.6rem; pointer-events:auto;">
+          <!-- Player B (Nia — Kanca) Tag Card -->
+          <div id="laf-player-b-card" class="laf-toy-tag laf-card-nia" style="min-width:210px; padding:0.65rem 1.1rem; color:white; text-align:right;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.25rem;">
+              <span id="laf-player-b-status" style="font-size:0.65rem; font-weight:800; color:#22c55e; background:rgba(34,197,94,0.15); padding:0.15rem 0.45rem; border-radius:0.4rem; border:1px solid rgba(34,197,94,0.3);">🟢 HAZIR</span>
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <span id="laf-player-b-name" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.12em; color:#06b6d4; font-weight:900;">NIA</span>
+                <span style="font-size:1.1rem;">🪝</span>
+              </div>
+            </div>
+            <div id="laf-player-b-nickname" style="font-size:1.05rem; font-weight:900; color:#f8fafc; margin-bottom:0.2rem; text-shadow:0 2px 4px rgba(0,0,0,0.5);">Oyuncu 2</div>
+            <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.75rem; font-weight:800; color:#06b6d4;">
+              <span id="laf-player-b-ability">HAZIR</span>
+              <span>KANCA (TUTUN/ÇEK)</span>
+            </div>
+            <div style="margin-top:0.35rem; height:5px; background:rgba(255,255,255,0.12); border-radius:3px; overflow:hidden;">
+              <div id="laf-player-b-cooldown" style="width:100%; height:100%; background:linear-gradient(90deg, #06b6d4, #0284c7); border-radius:3px; transition:width 0.2s;"></div>
+            </div>
           </div>
-          <div id="laf-player-b-nickname" style="font-size:1.05rem; font-weight:800; color:#f8fafc; margin-bottom:0.25rem;">Oyuncu 2</div>
-          <div style="display:flex; align-items:center; justify-content:flex-end; gap:0.4rem;">
-            <span id="laf-player-b-ability" style="font-size:0.8rem; font-weight:700; color:#06b6d4;">KANCA</span>
-            <span style="font-size:0.9rem;">🪝</span>
-          </div>
-          <div style="margin-top:0.4rem; height:3px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;">
-            <div id="laf-player-b-cooldown" style="width:100%; height:100%; background:#06b6d4; border-radius:2px; transition:width 0.2s;"></div>
+
+          <!-- Top-Right Co-Op Controls (Map & Pause) -->
+          <div style="display:flex; gap:0.5rem;">
+            <button type="button" id="laf-btn-map" class="laf-btn" title="Bölüm Haritası">
+              <span>🗺️</span> HARİTA
+            </button>
+            <button type="button" id="laf-btn-pause" class="laf-btn" title="Oyunu Duraklat / Menü">
+              <span>⏸️</span> MENÜ
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- ═══ OBJECTIVE PANEL (Left side, below top bar) ═══ -->
-      <div id="laf-objective-panel" style="position:absolute; left:1.5rem; top:7.5rem; z-index:15; max-width:280px; pointer-events:none;">
-        <div style="background:rgba(0,0,0,0.5); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.1); border-radius:0.8rem; padding:0.6rem 1rem; color:white;">
-          <div style="font-size:0.55rem; font-weight:800; text-transform:uppercase; letter-spacing:0.25em; color:rgba(255,255,255,0.4);">Görev</div>
-          <div id="laf-objective-text" style="font-size:0.85rem; font-weight:700; color:#facc15; margin-top:0.2rem;">Atölyeyi keşfedin!</div>
+      <!-- ═══ CONTEXTUAL CO-OP OBJECTIVE BANNER (Below Top HUD) ═══ -->
+      <div id="laf-objective-banner" style="position:absolute; top:7.4rem; left:50%; transform:translateX(-50%); z-index:18; pointer-events:none; max-width:85vw;">
+        <div class="laf-toy-tag" style="padding:0.45rem 1.4rem; display:flex; align-items:center; gap:0.6rem; background:rgba(15,23,42,0.85); border:1px solid rgba(250,204,21,0.4); box-shadow:0 6px 20px rgba(0,0,0,0.5);">
+          <span style="font-size:1.1rem;">🎯</span>
+          <span id="laf-objective-text" style="font-size:0.9rem; font-weight:800; color:#fef08a; letter-spacing:0.02em;">
+            Atölyeyi keşfedin! Kapıyı açmak için metal sandığı plakaya çekin.
+          </span>
         </div>
       </div>
 
-      <!-- ═══ CHECKPOINT INDICATOR (Bottom right) ═══ -->
-      <div id="laf-checkpoint-bar" style="position:absolute; right:1.5rem; bottom:1.5rem; z-index:15; pointer-events:none;">
-        <div style="background:rgba(0,0,0,0.5); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.1); border-radius:0.8rem; padding:0.5rem 1rem; color:white; display:flex; align-items:center; gap:0.6rem;">
-          <span style="font-size:0.6rem; text-transform:uppercase; letter-spacing:0.15em; color:rgba(255,255,255,0.4); font-weight:700;">İlerleme</span>
-          <div id="laf-checkpoint-dots" style="display:flex; gap:0.3rem;">
-            <span style="width:10px; height:10px; border-radius:50%; background:#22c55e;"></span>
-            <span style="width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.2);"></span>
-            <span style="width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.2);"></span>
-            <span style="width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.2);"></span>
-          </div>
-        </div>
-      </div>
+      <!-- ═══ FLOATING COMMUNICATION PINGS CONTAINER ═══ -->
+      <div id="laf-pings-container" style="position:absolute; inset:0; z-index:22; pointer-events:none; overflow:hidden;"></div>
 
-      <!-- ═══ INTERACTION PROMPT (Bottom center, hidden by default) ═══ -->
-      <div id="laf-interact-prompt" style="display:none; position:absolute; bottom:2rem; left:50%; transform:translateX(-50%); z-index:15; pointer-events:none;">
-        <div style="display:flex; align-items:center; gap:0.6rem; background:rgba(0,0,0,0.65); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.15); border-radius:2rem; padding:0.5rem 1.2rem; color:white; box-shadow:0 8px 25px rgba(0,0,0,0.4);">
-          <span style="background:rgba(255,255,255,0.15); padding:0.2rem 0.5rem; border-radius:0.4rem; font-size:0.7rem; font-weight:800;">ETKİLEŞİM</span>
-          <span id="laf-interact-label" style="font-size:0.85rem; font-weight:600;">Kolu Çek</span>
+      <!-- ═══ INTERACTION PROMPT (Hovering above objects) ═══ -->
+      <div id="laf-interact-prompt" style="display:none; position:absolute; bottom:2.5rem; left:50%; transform:translateX(-50%); z-index:20; pointer-events:none;">
+        <div class="laf-toy-tag" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 1.4rem; border-color:#fde047;">
+          <span style="background:#fde047; color:#0f172a; padding:0.2rem 0.5rem; border-radius:0.4rem; font-size:0.75rem; font-weight:900;">ETKİLEŞİM</span>
+          <span id="laf-interact-label" style="font-size:0.9rem; font-weight:800; color:white;">Kolu Çek</span>
         </div>
       </div>
 
       <!-- ═══ MINI-GAME SYNC OVERLAY ═══ -->
-      <div id="laf-minigame-overlay" style="display:none; position:absolute; bottom:2.5rem; left:50%; transform:translateX(-50%); z-index:20; width:520px; background:rgba(0,0,0,0.85); backdrop-filter:blur(14px); border:2px solid #facc15; border-radius:1.4rem; padding:1.2rem 2rem; box-shadow:0 12px 40px rgba(250,204,21,0.2); text-align:center; color:white;">
-        <div style="font-size:1.1rem; font-weight:900; color:#facc15; margin-bottom:0.3rem;">
+      <div id="laf-minigame-overlay" style="display:none; position:absolute; bottom:2.5rem; left:50%; transform:translateX(-50%); z-index:25; width:540px; max-width:92vw; background:rgba(15,23,42,0.92); backdrop-filter:blur(16px); border:2px solid #facc15; border-radius:1.5rem; padding:1.2rem 2rem; box-shadow:0 15px 45px rgba(250,204,21,0.25); text-align:center; color:white;">
+        <div style="font-size:1.15rem; font-weight:900; color:#facc15; margin-bottom:0.3rem;">
           ⚡ KASA TERMİNALİ SENKRONİZASYONU
         </div>
-        <div style="font-size:0.85rem; color:rgba(255,255,255,0.5); margin-bottom:0.6rem;">
-          Milo (Frekans) ve Nia (Faz) telefonlarından kilit açısını eşleştiriyor!
+        <div style="font-size:0.85rem; color:rgba(255,255,255,0.65); margin-bottom:0.7rem;">
+          Milo (Frekans) ve Nia (Faz) telefonlarından kilit dalgalarını eşleştiriyor!
         </div>
-        <div style="height:14px; background:rgba(255,255,255,0.08); border-radius:7px; overflow:hidden; border:1px solid rgba(255,255,255,0.12);">
+        <div style="height:14px; background:rgba(255,255,255,0.08); border-radius:7px; overflow:hidden; border:1px solid rgba(255,255,255,0.15);">
           <div id="laf-sync-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #38bdf8, #22c55e); transition:width 0.1s linear;"></div>
         </div>
-        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:rgba(255,255,255,0.6); margin-top:0.3rem; font-weight:700;">
-          <span>Milo: <strong id="laf-milo-val" style="color:#38bdf8;">0%</strong></span>
-          <span id="laf-sync-percent" style="color:#22c55e;">%0 EŞLEŞTİ</span>
-          <span>Nia: <strong id="laf-nia-val" style="color:#facc15;">0°</strong></span>
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:rgba(255,255,255,0.8); margin-top:0.4rem; font-weight:800;">
+          <span>Milo (Frekans): <strong id="laf-milo-val" style="color:#f59e0b;">0%</strong></span>
+          <span id="laf-sync-percent" style="color:#22c55e; font-size:0.9rem;">%0 EŞLEŞTİ</span>
+          <span>Nia (Faz): <strong id="laf-nia-val" style="color:#06b6d4;">0°</strong></span>
         </div>
       </div>
 
-      <!-- ═══ LEVEL COMPLETE OVERLAY (Hidden by default) ═══ -->
-      <div id="laf-level-complete" style="display:none; position:absolute; inset:0; z-index:50; background:rgba(0,0,0,0.6); backdrop-filter:blur(6px); display:none; justify-content:center; align-items:center;">
-        <div style="width:100%; max-width:480px; background:rgba(15,15,25,0.96); border:1px solid rgba(255,255,255,0.1); border-radius:1.5rem; padding:2.5rem; color:white; text-align:center; box-shadow:0 25px 60px rgba(0,0,0,0.6);">
-          <div style="font-size:0.65rem; font-weight:800; text-transform:uppercase; letter-spacing:0.3em; color:rgba(255,255,255,0.4);">Level Complete</div>
-          <h2 id="laf-complete-title" style="font-size:2.2rem; font-weight:900; margin:0.4rem 0 1.5rem; color:white;">Workshop 01</h2>
+      <!-- ═══ GOAL NOTIFICATION (Slide-in) ═══ -->
+      <div id="laf-goal-notification" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:30; pointer-events:none;">
+        <div class="laf-toy-tag" style="border:2px solid #22c55e; border-radius:1.5rem; padding:1.2rem 2.8rem; text-align:center; box-shadow:0 15px 50px rgba(34,197,94,0.4); background:rgba(15,23,42,0.92);">
+          <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.25em; color:#22c55e; font-weight:900;">Bulmaca Çözüldü</div>
+          <div id="laf-goal-text" style="font-size:1.6rem; font-weight:900; color:white; margin-top:0.3rem;">✓ Kapı Açıldı!</div>
+        </div>
+      </div>
 
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
-            <div style="background:rgba(255,255,255,0.05); border-radius:0.8rem; padding:0.8rem;">
-              <div style="font-size:0.6rem; text-transform:uppercase; letter-spacing:0.2em; color:rgba(255,255,255,0.4); font-weight:700;">Süre</div>
-              <div id="laf-complete-time" style="font-size:1.6rem; font-weight:900; color:white; margin-top:0.2rem;">00:00</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.05); border-radius:0.8rem; padding:0.8rem;">
-              <div style="font-size:0.6rem; text-transform:uppercase; letter-spacing:0.2em; color:rgba(255,255,255,0.4); font-weight:700;">Skor</div>
-              <div id="laf-complete-score" style="font-size:1.6rem; font-weight:900; color:#38bdf8; margin-top:0.2rem;">0</div>
-            </div>
+      <!-- ═══ INTERACTIVE PAUSE MODAL ═══ -->
+      <div id="laf-pause-modal" class="laf-modal-overlay" style="display:none;">
+        <div class="laf-modal-box" style="text-align:center;">
+          <div style="font-size:0.75rem; font-weight:900; letter-spacing:0.25em; color:#fde047; text-transform:uppercase;">
+            Oyun Duraklatıldı
           </div>
-
-          <div style="text-align:left; font-size:0.85rem; color:rgba(255,255,255,0.7);">
-            <div style="display:flex; align-items:center; gap:0.5rem; padding:0.4rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">
-              <span style="color:#22c55e;">✓</span> Çıkışa ulaşıldı
-            </div>
-            <div style="display:flex; align-items:center; gap:0.5rem; padding:0.4rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">
-              <span style="color:#22c55e;">✓</span> İki oyuncu da hayatta
-            </div>
-            <div style="display:flex; align-items:center; gap:0.5rem; padding:0.4rem 0;">
-              <span style="color:#22c55e;">✓</span> Kasa açıldı
-            </div>
+          <h2 style="font-size:1.8rem; font-weight:900; margin:0.3rem 0 1.5rem; color:white;">
+            LOST & FOUND
+          </h2>
+          <div style="display:flex; flex-direction:column; gap:0.75rem;">
+            <button type="button" id="laf-pause-resume-btn" class="laf-btn laf-btn-primary" style="justify-content:center; padding:0.8rem; font-size:1rem;">
+              ▶️ OYUNA DEVAM ET
+            </button>
+            <button type="button" id="laf-pause-restart-btn" class="laf-btn" style="justify-content:center; padding:0.8rem; font-size:0.95rem;">
+              🔄 BÖLÜMÜ YENİDEN BAŞLAT
+            </button>
+            <button type="button" id="laf-pause-map-btn" class="laf-btn" style="justify-content:center; padding:0.8rem; font-size:0.95rem;">
+              🗺️ BÖLÜM HARİTASI
+            </button>
+            <button type="button" id="laf-pause-controls-btn" class="laf-btn" style="justify-content:center; padding:0.8rem; font-size:0.95rem;">
+              📖 NASIL OYNANIR & KONTROLLER
+            </button>
+            <button type="button" id="laf-pause-lobby-btn" class="laf-btn" style="justify-content:center; padding:0.8rem; font-size:0.95rem; border-color:rgba(239,68,68,0.4); color:#fca5a5;">
+              🚪 ANA LOBİYE DÖN
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- ═══ GOAL NOTIFICATION (Animated slide-in, hidden) ═══ -->
-      <div id="laf-goal-notification" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:25; pointer-events:none;">
-        <div style="background:rgba(0,0,0,0.75); backdrop-filter:blur(12px); border:2px solid #22c55e; border-radius:1.2rem; padding:1rem 2.5rem; text-align:center; box-shadow:0 15px 40px rgba(34,197,94,0.3);">
-          <div style="font-size:0.6rem; text-transform:uppercase; letter-spacing:0.3em; color:#22c55e; font-weight:800;">Bulmaca Çözüldü</div>
-          <div id="laf-goal-text" style="font-size:1.4rem; font-weight:900; color:white; margin-top:0.3rem;">✓ Kapı Açıldı!</div>
+      <!-- ═══ FIREBOY & WATERGIRL STYLE WINDING LEVEL MAP MODAL ═══ -->
+      <div id="laf-map-modal" class="laf-modal-overlay" style="display:none;">
+        <div class="laf-modal-box" style="max-width:720px; width:94%; position:relative; padding:2rem 2.5rem;">
+          <button type="button" id="laf-map-close-btn" style="position:absolute; top:1.2rem; right:1.5rem; background:none; border:none; color:#94a3b8; font-size:1.5rem; cursor:pointer; font-weight:900;">✕</button>
+          
+          <div style="text-align:center; margin-bottom:1.5rem;">
+            <div style="font-size:0.7rem; font-weight:900; letter-spacing:0.25em; color:#fde047; text-transform:uppercase;">
+              Keşif Rotası
+            </div>
+            <h2 style="font-size:1.8rem; font-weight:900; color:white; margin-top:0.2rem;">
+              BÖLÜM HARİTASI
+            </h2>
+          </div>
+
+          <!-- Winding Path Trail -->
+          <div style="position:relative; padding:1.5rem 0; margin-bottom:1.5rem;">
+            <!-- Dotted connecting SVG path -->
+            <svg style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;" viewBox="0 0 600 120" preserveAspectRatio="none">
+              <path d="M 60 60 C 150 15, 200 105, 300 60 C 400 15, 450 105, 540 60" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="4" stroke-dasharray="8 8" />
+            </svg>
+
+            <!-- Level Nodes Row -->
+            <div style="position:relative; z-index:2; display:flex; justify-content:space-between; align-items:center; padding:0 1.5rem;">
+              <!-- Node 1 -->
+              <div class="laf-map-trail-node laf-node-completed" data-level="1" title="Bölüm 1: Atölye Girişi">
+                <span>1</span>
+                <span style="font-size:0.6rem; color:#fef08a;">★★★</span>
+              </div>
+
+              <!-- Node 2 -->
+              <div class="laf-map-trail-node laf-node-active" data-level="2" title="Bölüm 2: Buhar Uçurumu">
+                <span>2</span>
+                <span style="font-size:0.6rem; color:#fef08a;">★★☆</span>
+              </div>
+
+              <!-- Node 3 -->
+              <div class="laf-map-trail-node laf-node-completed" data-level="3" title="Bölüm 3: Büyük Kasa">
+                <span>3</span>
+                <span style="font-size:0.6rem; color:#fef08a;">★☆☆</span>
+              </div>
+
+              <!-- Node 4 -->
+              <div class="laf-map-trail-node laf-node-locked" data-level="4" title="Bölüm 4: Saat Kulesi Çarkları (Kilitli)">
+                <span>🔒</span>
+                <span style="font-size:0.55rem;">4</span>
+              </div>
+
+              <!-- Node 5 -->
+              <div class="laf-map-trail-node laf-node-locked" data-level="5" title="Bölüm 5: Oyuncak Kalbi (Kilitli)">
+                <span>🔒</span>
+                <span style="font-size:0.55rem;">5</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Selected Level Details Card -->
+          <div id="laf-map-level-card" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); border-radius:1rem; padding:1.2rem; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div id="laf-map-card-tag" style="font-size:0.65rem; font-weight:800; color:#fde047; text-transform:uppercase;">Bölüm 1</div>
+              <div id="laf-map-card-title" style="font-size:1.15rem; font-weight:900; color:white; margin:0.15rem 0;">Atölye Girişi & Güç Çekirdeği</div>
+              <div id="laf-map-card-desc" style="font-size:0.8rem; color:#cbd5e1;">Mıknatıs ile metal sandığı taşıyın, kanca ile yüksek halkalardan geçin.</div>
+            </div>
+            <button type="button" id="laf-map-play-selected-btn" class="laf-btn laf-btn-primary" style="padding:0.7rem 1.4rem; font-size:0.95rem; white-space:nowrap;">
+              ▶️ OYNA
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ HOW TO PLAY & CONTROLS MODAL ═══ -->
+      <div id="laf-controls-modal" class="laf-modal-overlay" style="display:none;">
+        <div class="laf-modal-box" style="max-width:700px; width:94%; position:relative;">
+          <button type="button" id="laf-controls-close-btn" style="position:absolute; top:1.2rem; right:1.5rem; background:none; border:none; color:#94a3b8; font-size:1.5rem; cursor:pointer; font-weight:900;">✕</button>
+
+          <div style="text-align:center; margin-bottom:1.5rem;">
+            <div style="font-size:0.7rem; font-weight:900; letter-spacing:0.25em; color:#fde047; text-transform:uppercase;">İki Kişilik Macera Kılavuzu</div>
+            <h2 style="font-size:1.8rem; font-weight:900; color:white;">NASIL OYNANIR?</h2>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.2rem;">
+            <!-- Milo Guide -->
+            <div style="background:linear-gradient(180deg, rgba(245,158,11,0.15), rgba(15,23,42,0.8)); border:1.5px solid rgba(245,158,11,0.4); border-radius:1rem; padding:1.2rem;">
+              <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem;">
+                <span style="font-size:1.3rem;">🧲</span>
+                <span style="font-size:1.1rem; font-weight:900; color:#f59e0b;">MILO (MIKNATIS)</span>
+              </div>
+              <ul style="font-size:0.82rem; color:#cbd5e1; padding-left:1.2rem; line-height:1.6; margin:0;">
+                <li>Önündeki metal sandıkları ve nesneleri manyetik ışınla kendine çeker.</li>
+                <li>Metal sandıkları basınç plakalarının üzerine yerleştirerek kapıları açık tutar.</li>
+                <li>Kasa senkronizasyonunda frekans (Hz) ayarını yapar.</li>
+              </ul>
+            </div>
+
+            <!-- Nia Guide -->
+            <div style="background:linear-gradient(180deg, rgba(6,182,212,0.15), rgba(15,23,42,0.8)); border:1.5px solid rgba(6,182,212,0.4); border-radius:1rem; padding:1.2rem;">
+              <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem;">
+                <span style="font-size:1.3rem;">🪝</span>
+                <span style="font-size:1.1rem; font-weight:900; color:#06b6d4;">NIA (KANCA)</span>
+              </div>
+              <ul style="font-size:0.82rem; color:#cbd5e1; padding-left:1.2rem; line-height:1.6; margin:0;">
+                <li>Tavandaki halkalara makaralı kanca fırlatarak uçurumlardan sallanır.</li>
+                <li>Yüksek raflara tırmanarak uzaktaki güç şalterlerini aktif eder.</li>
+                <li>Kasa senkronizasyonunda faz açısı (°) ayarını yapar.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div style="margin-top:1.2rem; text-align:center;">
+            <button type="button" id="laf-controls-got-it-btn" class="laf-btn laf-btn-primary" style="padding:0.7rem 2rem;">
+              ANLADIM, DEVAM ET
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ GRAND CO-OP LEVEL COMPLETE CELEBRATION OVERLAY ═══ -->
+      <div id="laf-level-complete" style="display:none; position:absolute; inset:0; z-index:50; background:rgba(8,12,20,0.85); backdrop-filter:blur(10px); justify-content:center; align-items:center;">
+        <div class="laf-modal-box" style="max-width:540px; text-align:center;">
+          <div style="font-size:0.75rem; font-weight:900; text-transform:uppercase; letter-spacing:0.3em; color:#fde047;">Co-Op Zaferi</div>
+          <h2 id="laf-complete-title" style="font-size:2.2rem; font-weight:900; margin:0.4rem 0 1rem; color:white;">BÖLÜM TAMAMLANDI!</h2>
+
+          <!-- 3 Dynamic Stars Animation -->
+          <div id="laf-complete-stars" style="font-size:3rem; margin-bottom:1.2rem; letter-spacing:0.4rem; filter:drop-shadow(0 0 18px rgba(250,204,21,0.8));">
+            <span style="color:#facc15;">★</span>
+            <span style="color:#facc15;">★</span>
+            <span style="color:#facc15;">★</span>
+          </div>
+
+          <!-- Performance Breakdown Grid -->
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.8rem; margin-bottom:1.4rem;">
+            <div style="background:rgba(255,255,255,0.06); border-radius:0.8rem; padding:0.8rem;">
+              <div style="font-size:0.65rem; text-transform:uppercase; color:#94a3b8; font-weight:800;">Süre</div>
+              <div id="laf-complete-time" style="font-size:1.4rem; font-weight:900; color:white; margin-top:0.2rem;">00:00</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.06); border-radius:0.8rem; padding:0.8rem;">
+              <div style="font-size:0.65rem; text-transform:uppercase; color:#94a3b8; font-weight:800;">Kayıp Eşya</div>
+              <div id="laf-complete-collectibles" style="font-size:1.4rem; font-weight:900; color:#38bdf8; margin-top:0.2rem;">5/5</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.06); border-radius:0.8rem; padding:0.8rem;">
+              <div style="font-size:0.65rem; text-transform:uppercase; color:#94a3b8; font-weight:800;">Skor</div>
+              <div id="laf-complete-score" style="font-size:1.4rem; font-weight:900; color:#22c55e; margin-top:0.2rem;">500 P</div>
+            </div>
+          </div>
+
+          <!-- Badges -->
+          <div style="display:flex; justify-content:center; gap:0.5rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+            <span style="background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.4); color:#86efac; padding:0.25rem 0.6rem; border-radius:0.5rem; font-size:0.75rem; font-weight:800;">⚡ HIZLI KAÇIŞ</span>
+            <span style="background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.4); color:#7dd3fc; padding:0.25rem 0.6rem; border-radius:0.5rem; font-size:0.75rem; font-weight:800;">💎 TÜM PARÇALAR</span>
+            <span style="background:rgba(250,204,21,0.15); border:1px solid rgba(250,204,21,0.4); color:#fef08a; padding:0.25rem 0.6rem; border-radius:0.5rem; font-size:0.75rem; font-weight:800;">🤝 KUSURSUZ SENKRON</span>
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display:flex; gap:0.8rem; justify-content:center;">
+            <button type="button" id="laf-complete-next-btn" class="laf-btn laf-btn-primary" style="flex:1; padding:0.8rem; font-size:1rem; justify-content:center;">
+              ▶️ SONRAKİ BÖLÜM
+            </button>
+            <button type="button" id="laf-complete-replay-btn" class="laf-btn" style="padding:0.8rem 1.2rem;">
+              🔄 TEKRAR
+            </button>
+            <button type="button" id="laf-complete-map-btn" class="laf-btn" style="padding:0.8rem 1.2rem;">
+              🗺️ HARİTA
+            </button>
+          </div>
         </div>
       </div>
 

@@ -11,6 +11,8 @@ import type {
   Lever,
   AnchorRing,
   MiniGameSession,
+  LostItem,
+  CoOpPing,
 } from '../shared/types.js';
 import { DEFAULT_CONFIG } from '../shared/types.js';
 
@@ -46,6 +48,8 @@ export class LostAndFoundGame {
   private tickId = 0;
   private startedAt = 0;
   private phase: LostAndFoundPhase = 'intro';
+  private currentLevelIndex = 1;
+  private levelName = 'BÖLÜM 1: ATÖLYE GİRİŞİ';
   private objectiveText = 'Atölyeye Hoş Geldiniz! İlerleyin.';
 
   // World Entities
@@ -55,6 +59,8 @@ export class LostAndFoundGame {
   private pressurePlates: PressurePlate[] = [];
   private levers: Lever[] = [];
   private anchorRings: AnchorRing[] = [];
+  private collectibles: LostItem[] = [];
+  private activePings: CoOpPing[] = [];
   private miniGame: MiniGameSession = {
     targetFrequency: 72,
     targetPhase: 180,
@@ -69,11 +75,33 @@ export class LostAndFoundGame {
   constructor(room: RoomAdapter, config: Partial<LostAndFoundConfig> = {}) {
     this.room = room;
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.initLevel();
+    this.initLevel(1);
   }
 
-  private initLevel(): void {
-    // Level 1: "The Workshop" (Atölye)
+  public setLevel(index: number) {
+    this.initLevel(index);
+    this.start();
+  }
+
+  public restartCurrentLevel() {
+    this.initLevel(this.currentLevelIndex);
+    this.start();
+  }
+
+  private initLevel(levelIndex = 1): void {
+    this.currentLevelIndex = levelIndex;
+    if (levelIndex === 1) {
+      this.levelName = 'BÖLÜM 1: ATÖLYE GİRİŞİ';
+      this.objectiveText = 'Atölyeyi keşfedin! Kapıyı açmak için metal sandığı plakaya çekin.';
+    } else if (levelIndex === 2) {
+      this.levelName = 'BÖLÜM 2: BUHAR UÇURUMU';
+      this.objectiveText = 'Jeneratörü çalıştırın ve asansörle yüksek köprüye çıkın!';
+    } else {
+      this.levelName = 'BÖLÜM 3: BÜYÜK KASA';
+      this.objectiveText = 'Kasa terminaline ulaşın ve frekans kilidini senkronize edin!';
+    }
+
+    // Platforms
     this.platforms = [
       // Bölge 1: Başlangıç Zemin & Yüksek Raf
       { id: 'floor_1', x: 0, y: 0, width: 28, height: 2, type: 'static' },
@@ -97,6 +125,8 @@ export class LostAndFoundGame {
       { id: 'metal_crate_1', x: 18, y: 7, width: 2.6, height: 2.6, vx: 0, vy: 0, isMetal: true, isHeld: false },
     ];
 
+    this.powerCore = { x: 42, y: 18, vx: 0, vy: 0, isHeld: false, isInserted: false };
+
     // Basınç Plakaları
     this.pressurePlates = [
       { id: 'plate_gate_1', x: 23, y: 2, width: 3, isPressed: false },
@@ -116,6 +146,36 @@ export class LostAndFoundGame {
       { id: 'ring_3', x: 52, y: 20 },
       { id: 'ring_4', x: 74, y: 23 },
     ];
+
+    // Ateş ve Su Estetiğinde Toplanabilir Kayıp Eşyalar (Elmaslar & Dişliler)
+    this.collectibles = [
+      { id: 'gem_1', x: 14, y: 7.5, type: 'gear', collected: false },
+      { id: 'gem_2', x: 23, y: 3.6, type: 'screw', collected: false },
+      { id: 'gem_3', x: 38, y: 15.5, type: 'ruby', collected: false },
+      { id: 'gem_4', x: 67, y: 15.8, type: 'battery', collected: false },
+      { id: 'gem_5', x: 96, y: 16.5, type: 'sapphire', collected: false },
+    ];
+
+    this.miniGame = {
+      targetFrequency: 72,
+      targetPhase: 180,
+      miloFrequency: 10,
+      niaPhase: 45,
+      syncProgress: 0,
+      isUnlocked: false,
+    };
+    this.vaultDoorOpen = false;
+    this.completionTimeMs = undefined;
+
+    // Reset player positions if players exist
+    for (const player of this.players.values()) {
+      player.x = player.role === 'milo' ? 4 : 8;
+      player.y = 2.5;
+      player.vx = 0;
+      player.vy = 0;
+      player.isGrounded = false;
+      player.abilityActive = false;
+    }
   }
 
   addPlayer(id: string, nickname: string): boolean {
@@ -159,6 +219,25 @@ export class LostAndFoundGame {
     if (!player) return;
 
     player.input = input;
+
+    // Emote / Communication Ping
+    if (input.pingEmote) {
+      this.activePings.push({
+        playerId: id,
+        role: player.role,
+        text: input.pingEmote,
+        timestamp: Date.now(),
+      });
+      if (this.activePings.length > 5) this.activePings.shift();
+    }
+
+    // Respawn / Recover to safe platform
+    if (input.recover) {
+      player.x = player.role === 'milo' ? 4 : 8;
+      player.y = 2.5;
+      player.vx = 0;
+      player.vy = 0;
+    }
 
     // Mini-Game input forwarding
     if (this.phase === 'minigame' && input.miniGameInput) {
@@ -243,7 +322,33 @@ export class LostAndFoundGame {
     // 4. Mekanizmalar, Butonlar ve Platformlar
     this.updateMechanisms(dt);
 
-    // 5. Mini Oyun ve Hedef Kontrolü
+    // 5. Collectibles (Kayıp Eşyalar & Elmaslar) Çarpışma Kontrolü
+    for (const item of this.collectibles) {
+      if (item.collected) continue;
+      for (const player of this.players.values()) {
+        const dist = Math.hypot(player.x - item.x, (player.y + 1) - item.y);
+        if (dist < 1.9) {
+          item.collected = true;
+          item.collectedBy = player.role;
+          player.score += 75;
+          this.room.broadcast('EVENT', {
+            type: 'COLLECTIBLE_PICKED',
+            playerId: player.id,
+            role: player.role,
+            itemId: item.id,
+            itemType: item.type,
+            timestamp: Date.now(),
+          });
+          break;
+        }
+      }
+    }
+
+    // 6. Ping Zaman Aşımı (3.5s)
+    const now = Date.now();
+    this.activePings = this.activePings.filter((p) => now - p.timestamp < 3500);
+
+    // 7. Mini Oyun ve Hedef Kontrolü
     this.checkObjectivesAndTriggers();
 
     // Snapshot Yayınla
@@ -587,8 +692,24 @@ export class LostAndFoundGame {
     }
   }
 
+  private calculateStars(): number {
+    const elapsedSec = (Date.now() - this.startedAt) / 1000;
+    const collectedCount = this.collectibles.filter((c) => c.collected).length;
+    const total = this.collectibles.length;
+
+    if (this.phase === 'completed') {
+      if (elapsedSec <= 90 && collectedCount === total) return 3;
+      if (elapsedSec <= 150 && collectedCount >= 3) return 2;
+      return 1;
+    }
+    if (collectedCount >= 4) return 3;
+    if (collectedCount >= 2) return 2;
+    return 1;
+  }
+
   private broadcastSnapshot(): void {
     const elapsedMs = this.phase === 'intro' ? 0 : Date.now() - this.startedAt;
+    const collectedCount = this.collectibles.filter((c) => c.collected).length;
 
     const playersSnap: PlayerSnapshot[] = [...this.players.values()].map((p) => ({
       id: p.id,
@@ -610,6 +731,8 @@ export class LostAndFoundGame {
       phase: this.phase,
       tick: this.tickId,
       elapsedMs,
+      currentLevelIndex: this.currentLevelIndex,
+      levelName: this.levelName,
       objectiveText: this.objectiveText,
       players: playersSnap,
       crates: this.crates,
@@ -618,9 +741,14 @@ export class LostAndFoundGame {
       pressurePlates: this.pressurePlates,
       levers: this.levers,
       anchorRings: this.anchorRings,
+      collectibles: this.collectibles,
+      collectedCount,
+      totalCollectibles: this.collectibles.length,
+      stars: this.calculateStars(),
       miniGame: this.miniGame,
       vaultDoorOpen: this.vaultDoorOpen,
       completionTimeMs: this.completionTimeMs,
+      activePings: this.activePings,
     };
 
     this.room.broadcast('STATE', {

@@ -257,30 +257,60 @@ async function bootstrap() {
   // Lost & Found Elements
   const lostAndFoundCanvasContainer = document.getElementById('lost-and-found-canvas-container')!;
   const lafObjectiveText = document.getElementById('laf-objective-text')!;
-  const lafPhaseBadge = document.getElementById('laf-phase-badge')!;
   const lafTimer = document.getElementById('laf-timer')!;
   const lafMinigameOverlay = document.getElementById('laf-minigame-overlay')!;
   const lafSyncBar = document.getElementById('laf-sync-bar')!;
   const lafSyncPercent = document.getElementById('laf-sync-percent')!;
   const lafMiloVal = document.getElementById('laf-milo-val')!;
   const lafNiaVal = document.getElementById('laf-nia-val')!;
-  // New adventure UI elements
   const lafPlayerANickname = document.getElementById('laf-player-a-nickname');
   const lafPlayerBNickname = document.getElementById('laf-player-b-nickname');
   const lafPlayerAAbility = document.getElementById('laf-player-a-ability');
   const lafPlayerBAbility = document.getElementById('laf-player-b-ability');
   const lafPlayerACooldown = document.getElementById('laf-player-a-cooldown');
   const lafPlayerBCooldown = document.getElementById('laf-player-b-cooldown');
+  const lafPlayerAStatus = document.getElementById('laf-player-a-status');
+  const lafPlayerBStatus = document.getElementById('laf-player-b-status');
+  const lafLevelBadge = document.getElementById('laf-level-badge');
+  const lafStar1 = document.getElementById('laf-star-1');
+  const lafStar2 = document.getElementById('laf-star-2');
+  const lafStar3 = document.getElementById('laf-star-3');
+  const lafCollectiblesCollected = document.getElementById('laf-collectibles-collected');
+  const lafCollectiblesTotal = document.getElementById('laf-collectibles-total');
+  const lafPingsContainer = document.getElementById('laf-pings-container');
   const lafLevelComplete = document.getElementById('laf-level-complete');
   const lafCompleteTime = document.getElementById('laf-complete-time');
   const lafCompleteScore = document.getElementById('laf-complete-score');
+  const lafCompleteCollectibles = document.getElementById('laf-complete-collectibles');
   const lafGoalNotification = document.getElementById('laf-goal-notification');
   const lafGoalText = document.getElementById('laf-goal-text');
   const lafInteractPrompt = document.getElementById('laf-interact-prompt');
-  void lafInteractPrompt; // Reserved for future interaction prompt logic
-  const lafCheckpointDots = document.getElementById('laf-checkpoint-dots');
+  void lafInteractPrompt;
+  const lafBtnMap = document.getElementById('laf-btn-map');
+  const lafBtnPause = document.getElementById('laf-btn-pause');
+  const lafPauseModal = document.getElementById('laf-pause-modal');
+  const lafPauseResumeBtn = document.getElementById('laf-pause-resume-btn');
+  const lafPauseRestartBtn = document.getElementById('laf-pause-restart-btn');
+  const lafPauseMapBtn = document.getElementById('laf-pause-map-btn');
+  const lafPauseControlsBtn = document.getElementById('laf-pause-controls-btn');
+  const lafPauseLobbyBtn = document.getElementById('laf-pause-lobby-btn');
+  const lafMapModal = document.getElementById('laf-map-modal');
+  const lafMapCloseBtn = document.getElementById('laf-map-close-btn');
+  const lafMapCardTag = document.getElementById('laf-map-card-tag');
+  const lafMapCardTitle = document.getElementById('laf-map-card-title');
+  const lafMapCardDesc = document.getElementById('laf-map-card-desc');
+  const lafMapPlaySelectedBtn = document.getElementById('laf-map-play-selected-btn');
+  const lafControlsModal = document.getElementById('laf-controls-modal');
+  const lafControlsCloseBtn = document.getElementById('laf-controls-close-btn');
+  const lafControlsGotItBtn = document.getElementById('laf-controls-got-it-btn');
+  const lafCompleteNextBtn = document.getElementById('laf-complete-next-btn');
+  const lafCompleteReplayBtn = document.getElementById('laf-complete-replay-btn');
+  const lafCompleteMapBtn = document.getElementById('laf-complete-map-btn');
+
+  let selectedMapLevel = 1;
   let lostAndFoundRenderer: LostAndFoundRenderer3D | null = null;
   let lafPrevVaultOpen = false;
+  let lafCurrentLevelIdx = 1;
 
   // Mini Football Elements
   const footballCanvasContainer = document.getElementById('football-canvas-container')!;
@@ -547,6 +577,133 @@ async function bootstrap() {
     pauseLobbyBtn.onclick = () => {
       sdk.returnToLobby();
     };
+
+    // ─── Lost & Found Co-Op Modals & Controls ───
+    const lafLevelData: Record<number, { tag: string; title: string; desc: string }> = {
+      1: {
+        tag: 'Bölüm 1',
+        title: 'Atölye Girişi & Güç Çekirdeği',
+        desc: 'Mıknatıs ile metal sandığı taşıyın, kanca ile yüksek halkalardan geçin.',
+      },
+      2: {
+        tag: 'Bölüm 2',
+        title: 'Buhar Uçurumu & Çift Basınç',
+        desc: 'Jeneratöre güç çekirdeğini yerleştirin, asansörle yüksek köprüye çıkın.',
+      },
+      3: {
+        tag: 'Bölüm 3',
+        title: 'Büyük Kasa & Frekans Kilidi',
+        desc: 'Kasa terminaline ulaşın, telefonlarınızdan frekans ve fazı eşleştirin.',
+      },
+    };
+
+    if (lafBtnMap && lafMapModal) {
+      lafBtnMap.onclick = () => {
+        lafMapModal.style.display = 'flex';
+      };
+    }
+    if (lafMapCloseBtn && lafMapModal) {
+      lafMapCloseBtn.onclick = () => {
+        lafMapModal.style.display = 'none';
+      };
+    }
+
+    // Map Node Clicks
+    document.querySelectorAll('.laf-map-trail-node').forEach((node) => {
+      node.addEventListener('click', () => {
+        const lvl = parseInt(node.getAttribute('data-level') || '1', 10);
+        if (lvl > 3) return; // Locked levels
+        selectedMapLevel = lvl;
+
+        document.querySelectorAll('.laf-map-trail-node').forEach((n) => {
+          n.classList.remove('laf-node-active');
+        });
+        node.classList.add('laf-node-active');
+
+        const info = lafLevelData[lvl];
+        if (info) {
+          if (lafMapCardTag) lafMapCardTag.innerText = info.tag;
+          if (lafMapCardTitle) lafMapCardTitle.innerText = info.title;
+          if (lafMapCardDesc) lafMapCardDesc.innerText = info.desc;
+        }
+      });
+    });
+
+    if (lafMapPlaySelectedBtn && lafMapModal) {
+      lafMapPlaySelectedBtn.onclick = () => {
+        sdk.send('LAF_SELECT_LEVEL', { levelIndex: selectedMapLevel });
+        lafMapModal.style.display = 'none';
+      };
+    }
+
+    // Pause Modal
+    if (lafBtnPause && lafPauseModal) {
+      lafBtnPause.onclick = () => {
+        lafPauseModal.style.display = 'flex';
+      };
+    }
+    if (lafPauseResumeBtn && lafPauseModal) {
+      lafPauseResumeBtn.onclick = () => {
+        lafPauseModal.style.display = 'none';
+      };
+    }
+    if (lafPauseRestartBtn && lafPauseModal) {
+      lafPauseRestartBtn.onclick = () => {
+        lafPauseModal.style.display = 'none';
+        sdk.send('RESTART_GAME');
+      };
+    }
+    if (lafPauseMapBtn && lafPauseModal && lafMapModal) {
+      lafPauseMapBtn.onclick = () => {
+        lafPauseModal.style.display = 'none';
+        lafMapModal.style.display = 'flex';
+      };
+    }
+    if (lafPauseControlsBtn && lafPauseModal && lafControlsModal) {
+      lafPauseControlsBtn.onclick = () => {
+        lafPauseModal.style.display = 'none';
+        lafControlsModal.style.display = 'flex';
+      };
+    }
+    if (lafPauseLobbyBtn && lafPauseModal) {
+      lafPauseLobbyBtn.onclick = () => {
+        lafPauseModal.style.display = 'none';
+        sdk.returnToLobby();
+      };
+    }
+
+    // Controls Guide Modal
+    if (lafControlsCloseBtn && lafControlsModal) {
+      lafControlsCloseBtn.onclick = () => {
+        lafControlsModal.style.display = 'none';
+      };
+    }
+    if (lafControlsGotItBtn && lafControlsModal) {
+      lafControlsGotItBtn.onclick = () => {
+        lafControlsModal.style.display = 'none';
+      };
+    }
+
+    // Level Complete Modal Actions
+    if (lafCompleteNextBtn && lafLevelComplete) {
+      lafCompleteNextBtn.onclick = () => {
+        const nextLvl = (lafCurrentLevelIdx % 3) + 1;
+        sdk.send('LAF_SELECT_LEVEL', { levelIndex: nextLvl });
+        lafLevelComplete.style.display = 'none';
+      };
+    }
+    if (lafCompleteReplayBtn && lafLevelComplete) {
+      lafCompleteReplayBtn.onclick = () => {
+        sdk.send('RESTART_GAME');
+        lafLevelComplete.style.display = 'none';
+      };
+    }
+    if (lafCompleteMapBtn && lafLevelComplete && lafMapModal) {
+      lafCompleteMapBtn.onclick = () => {
+        lafLevelComplete.style.display = 'none';
+        lafMapModal.style.display = 'flex';
+      };
+    }
 
     // Sunucu Durumunu Dinle
     sdk.onStateChange = (state) => {
@@ -1388,27 +1545,32 @@ async function bootstrap() {
         }
         lostAndFoundRenderer.updateSnapshot(lafState);
 
+        lafCurrentLevelIdx = lafState.currentLevelIndex || 1;
+
         // ─── Update HUD ───
+
+        // Level Badge
+        if (lafLevelBadge && lafState.levelName) {
+          lafLevelBadge.innerText = `🏷️ ${lafState.levelName}`;
+        }
 
         // Objective
         if (lafObjectiveText && lafState.objectiveText) {
           lafObjectiveText.innerText = lafState.objectiveText;
         }
 
-        // Phase Badge
-        if (lafPhaseBadge) {
-          lafPhaseBadge.innerText =
-            lafState.phase === 'minigame'
-              ? 'KASA KİLİDİ'
-              : lafState.phase === 'completed'
-              ? 'TAMAMLANDI'
-              : 'OYNANIYOR';
-          lafPhaseBadge.style.background =
-            lafState.phase === 'minigame'
-              ? '#f59e0b'
-              : lafState.phase === 'completed'
-              ? '#22c55e'
-              : '#2563eb';
+        // Live Stars Rating
+        const stars = lafState.stars || 1;
+        if (lafStar1) lafStar1.style.color = stars >= 1 ? '#facc15' : '#475569';
+        if (lafStar2) lafStar2.style.color = stars >= 2 ? '#facc15' : '#475569';
+        if (lafStar3) lafStar3.style.color = stars >= 3 ? '#facc15' : '#475569';
+
+        // Collectibles Counter
+        if (lafCollectiblesCollected) {
+          lafCollectiblesCollected.innerText = (lafState.collectedCount ?? 0).toString();
+        }
+        if (lafCollectiblesTotal) {
+          lafCollectiblesTotal.innerText = (lafState.totalCollectibles ?? 5).toString();
         }
 
         // Timer
@@ -1426,35 +1588,47 @@ async function bootstrap() {
         if (miloP) {
           if (lafPlayerANickname) lafPlayerANickname.innerText = miloP.nickname;
           if (lafPlayerAAbility) {
-            lafPlayerAAbility.innerText = miloP.abilityActive ? 'AKTİF' : 'MIKNATIS';
+            lafPlayerAAbility.innerText = miloP.abilityActive ? 'AKTİF ⚡' : 'HAZIR';
           }
           if (lafPlayerACooldown) {
             lafPlayerACooldown.style.width = miloP.abilityActive ? '0%' : '100%';
-            lafPlayerACooldown.style.background = miloP.abilityActive ? '#22c55e' : '#f97316';
           }
+          if (lafPlayerAStatus) lafPlayerAStatus.innerText = '🟢 BAĞLI';
+        } else {
+          if (lafPlayerAStatus) lafPlayerAStatus.innerText = '⏳ BEKLENİYOR';
         }
+
         if (niaP) {
           if (lafPlayerBNickname) lafPlayerBNickname.innerText = niaP.nickname;
           if (lafPlayerBAbility) {
-            lafPlayerBAbility.innerText = niaP.abilityActive ? 'AKTİF' : 'KANCA';
+            lafPlayerBAbility.innerText = niaP.abilityActive ? 'AKTİF 🪝' : 'HAZIR';
           }
           if (lafPlayerBCooldown) {
             lafPlayerBCooldown.style.width = niaP.abilityActive ? '0%' : '100%';
-            lafPlayerBCooldown.style.background = niaP.abilityActive ? '#22c55e' : '#06b6d4';
           }
+          if (lafPlayerBStatus) lafPlayerBStatus.innerText = '🟢 BAĞLI';
+        } else {
+          if (lafPlayerBStatus) lafPlayerBStatus.innerText = '⏳ BEKLENİYOR';
         }
 
-        // ─── Checkpoint Progress ───
-        if (lafCheckpointDots) {
-          const steps = [
-            lafState.platforms?.find((p: any) => p.id === 'gate_1')?.isOpen,
-            lafState.powerCore?.isInserted,
-            lafState.platforms?.find((p: any) => p.id === 'piston_1')?.isOpen,
-            lafState.vaultDoorOpen,
-          ];
-          lafCheckpointDots.innerHTML = steps.map((done: boolean) =>
-            `<span style="width:10px; height:10px; border-radius:50%; background:${done ? '#22c55e' : 'rgba(255,255,255,0.15)'};"></span>`
-          ).join('');
+        // ─── Floating Communication Pings ───
+        if (lafPingsContainer && lafState.activePings && lafState.activePings.length > 0) {
+          const now = Date.now();
+          lafPingsContainer.innerHTML = lafState.activePings
+            .filter((p: any) => now - p.timestamp < 3200)
+            .map((p: any) => {
+              const isMilo = p.role === 'milo';
+              const leftPos = isMilo ? '18%' : '70%';
+              const color = isMilo ? '#f59e0b' : '#06b6d4';
+              return `<div class="laf-ping-bubble laf-toy-tag" style="position:absolute; top:8.5rem; left:${leftPos}; padding:0.45rem 1rem; border-color:${color}; background:rgba(15,23,42,0.92); display:flex; align-items:center; gap:0.4rem; z-index:30;">
+                <span style="font-size:1.1rem;">${p.text.split(' ')[0] || '📢'}</span>
+                <span style="font-weight:900; color:${color}; font-size:0.85rem;">${p.role.toUpperCase()}:</span>
+                <span style="font-weight:800; color:white; font-size:0.85rem;">${p.text}</span>
+              </div>`;
+            })
+            .join('');
+        } else if (lafPingsContainer && (!lafState.activePings || lafState.activePings.length === 0)) {
+          lafPingsContainer.innerHTML = '';
         }
 
         // ─── Goal Notification (Vault opens) ───
@@ -1467,7 +1641,7 @@ async function bootstrap() {
         }
         lafPrevVaultOpen = lafState.vaultDoorOpen || false;
 
-        // ─── Level Complete Overlay ───
+        // ─── Level Complete Celebration Overlay ───
         if (lafLevelComplete) {
           if (lafState.phase === 'completed') {
             lafLevelComplete.style.display = 'flex';
@@ -1476,6 +1650,9 @@ async function bootstrap() {
               const cm = Math.floor(sec / 60).toString().padStart(2, '0');
               const cs = (sec % 60).toString().padStart(2, '0');
               lafCompleteTime.innerText = `${cm}:${cs}`;
+            }
+            if (lafCompleteCollectibles) {
+              lafCompleteCollectibles.innerText = `${lafState.collectedCount ?? 5}/${lafState.totalCollectibles ?? 5}`;
             }
             if (lafCompleteScore) {
               const totalScore = (miloP?.score || 0) + (niaP?.score || 0);

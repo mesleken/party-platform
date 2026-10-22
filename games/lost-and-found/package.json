@@ -6,7 +6,8 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "node --test test/*.test.ts"
   },
   "dependencies": {
     "@colyseus/core": "^0.18.17",
