@@ -6,6 +6,7 @@ export class QuestionManager {
   private availableQuestions: BluffQuestion[] = [];
   private currentQuestion?: BluffQuestion;
   private friendTemplatesDeck: string[] = [];
+  private usedQuestionIds: Set<string> = new Set();
 
   constructor() {
     this.resetDeck();
@@ -20,12 +21,20 @@ export class QuestionManager {
     return this.category;
   }
 
+  public resetMatchDeck() {
+    this.usedQuestionIds.clear();
+    this.resetDeck();
+  }
+
   public resetDeck() {
     if (this.category === 'arkadas') {
       this.friendTemplatesDeck = [...FRIEND_QUESTION_TEMPLATES].sort(() => Math.random() - 0.5);
     } else {
       const qs = getQuestionsForCategory(this.category);
-      this.availableQuestions = [...qs].sort(() => Math.random() - 0.5);
+      // Filter out already used questions in this match if possible
+      const unused = qs.filter((q) => !this.usedQuestionIds.has(q.id));
+      const pool = unused.length > 0 ? unused : qs;
+      this.availableQuestions = [...pool].sort(() => Math.random() - 0.5);
     }
   }
 
@@ -54,6 +63,7 @@ export class QuestionManager {
       this.resetDeck();
     }
     this.currentQuestion = this.availableQuestions.pop() || BLUFF_QUESTIONS[0];
+    this.usedQuestionIds.add(this.currentQuestion.id);
     return this.currentQuestion;
   }
 

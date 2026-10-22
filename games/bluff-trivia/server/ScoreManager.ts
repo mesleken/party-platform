@@ -81,13 +81,17 @@ export class ScoreManager {
       };
     });
 
+    const realChoice = reveals.find((r) => r.isCorrect);
+    const truthStumped = Boolean(!realChoice || realChoice.votes === 0);
+
     return {
       round,
       correctAnswer,
       reveals,
       playerScores,
       bluffMasterName: maxTrickedCount > 0 ? bluffMasterName : '',
-      bluffMasterCount: maxTrickedCount
+      bluffMasterCount: maxTrickedCount,
+      truthStumped
     };
   }
 }

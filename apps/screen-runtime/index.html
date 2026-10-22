@@ -1140,16 +1140,24 @@
       <div id="bluff-content-stage" style="flex:1; display:flex; flex-direction:column; overflow-y:auto;">
         <!-- 1. Submitting: Oyuncuların yazma durumu -->
         <div id="bluff-stage-submitting" style="display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1;">
-          <div style="font-size:1.6rem; color:#cbd5e1; margin-bottom:1.5rem; font-weight:600;">
+          <div style="font-size:1.6rem; color:#cbd5e1; margin-bottom:0.8rem; font-weight:600;">
             Telefonunuzdan inandırıcı bir sahte cevap yazın!
+          </div>
+          <div id="bluff-submission-counter" style="background:rgba(139,92,246,0.18); border:1.5px solid #8b5cf6; color:#c084fc; padding:0.4rem 1.2rem; border-radius:2rem; font-size:1.15rem; font-weight:800; margin-bottom:1.5rem;">
+            0 / 0 Oyuncu Gönderdi
           </div>
           <div id="bluff-submitting-players" style="display:flex; justify-content:center; gap:1.2rem; flex-wrap:wrap; max-width:900px;"></div>
         </div>
 
         <!-- 2. Voting: Anonim seçenekler -->
         <div id="bluff-stage-voting" style="display:none; flex-direction:column; flex:1;">
-          <div style="font-size:1.4rem; color:#94a3b8; margin-bottom:1rem; text-align:center; font-weight:600;">
-            Gerçek cevap hangisi? Telefonunuzdan seçin!
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; padding:0 0.5rem;">
+            <div style="font-size:1.4rem; color:#94a3b8; font-weight:600;">
+              Gerçek cevap hangisi? Telefonunuzdan seçin!
+            </div>
+            <div id="bluff-voting-counter" style="background:rgba(56,189,248,0.18); border:1.5px solid #38bdf8; color:#38bdf8; padding:0.35rem 1rem; border-radius:2rem; font-size:1.1rem; font-weight:800;">
+              0 / 0 Oy Kullanıldı
+            </div>
           </div>
           <div id="bluff-choices-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; flex:1;"></div>
         </div>
@@ -1158,6 +1166,9 @@
         <div id="bluff-stage-reveal" style="display:none; flex-direction:column; flex:1; gap:1rem;">
           <div id="bluff-master-banner" style="display:none; background:linear-gradient(135deg, #f59e0b, #d97706); color:white; padding:0.8rem 1.5rem; border-radius:1rem; font-size:1.6rem; font-weight:900; text-align:center; box-shadow:0 6px 20px rgba(245,158,11,0.4);">
             🎭 GÜNÜN BLÖF USTASI: <span id="bluff-master-name">---</span> (<span id="bluff-master-count">0</span> kişiyi kandırdı!)
+          </div>
+          <div id="bluff-truth-stumped-banner" style="display:none; background:linear-gradient(135deg, #ef4444, #b91c1c); color:white; padding:0.8rem 1.5rem; border-radius:1rem; font-size:1.5rem; font-weight:900; text-align:center; box-shadow:0 6px 20px rgba(239,68,68,0.4);">
+            🤯 KİMSE BİLEMEDİ! Herkes sahte blöflere kandı!
           </div>
           <div id="bluff-reveals-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; flex:1;"></div>
         </div>

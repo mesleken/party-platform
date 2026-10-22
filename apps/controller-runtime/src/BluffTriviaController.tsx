@@ -82,8 +82,8 @@ export function BluffTriviaController({
       setLocalError('Cevap en az 2 karakter olmalıdır.');
       return;
     }
-    if (formatted.length > 70) {
-      setLocalError('Cevap en fazla 70 karakter olabilir.');
+    if (formatted.length > 80) {
+      setLocalError('Cevap en fazla 80 karakter olabilir.');
       return;
     }
 
@@ -279,6 +279,19 @@ export function BluffTriviaController({
                 boxSizing: 'border-box'
               }}
             />
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                fontSize: '0.85rem',
+                color: inputText.length > 70 ? '#ef4444' : '#94a3b8',
+                marginTop: '-0.3rem',
+                fontWeight: 700
+              }}
+            >
+              {inputText.length} / 80
+            </div>
 
             {/* Hata Uyarısı Kutusu (Gerçek Cevap Engeli / Mükerrer Cevap) */}
             {localError && (
@@ -612,7 +625,7 @@ export function BluffTriviaController({
                   😈 {trickedCount} kişiyi kandırdın!
                 </div>
                 <div style={{ fontSize: '1.15rem', color: '#facc15', marginTop: '0.3rem', fontWeight: 800 }}>
-                  +{trickedCount * 150} Puan
+                  +{trickedCount * 100} Puan
                 </div>
               </div>
             ) : (

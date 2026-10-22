@@ -1,5 +1,6 @@
 import type { PlayerAnswerRecord } from '../shared/types.js';
 import { formatBluffAnswer, normalizeForComparison } from '../shared/types.js';
+import { BLUFF_CONFIG } from '../shared/config.js';
 
 export class AnswerManager {
   private answers = new Map<string, PlayerAnswerRecord>();
@@ -20,12 +21,12 @@ export class AnswerManager {
       return { success: false, error: 'Cevap boş olamaz.' };
     }
 
-    if (formatted.length < 2) {
+    if (formatted.length < (BLUFF_CONFIG.minAnswerLength || 2)) {
       return { success: false, error: 'Cevap en az 2 karakter olmalıdır.' };
     }
 
-    if (formatted.length > 70) {
-      return { success: false, error: 'Cevap en fazla 70 karakter olabilir.' };
+    if (formatted.length > (BLUFF_CONFIG.maxAnswerLength || 80)) {
+      return { success: false, error: `Cevap en fazla ${BLUFF_CONFIG.maxAnswerLength || 80} karakter olabilir.` };
     }
 
     // Check if player already submitted

@@ -219,6 +219,78 @@ export const BLUFF_QUESTIONS: BluffQuestion[] = [
     question: "Ketçap 1830'lu yıllarda Amerika'da eczanelerde ne olarak reçeteyle satılıyordu?",
     correctAnswer: 'İshal Ve Mide İlacı',
     defaultFakes: ['Gargara', 'Yara Merhemi', 'Öksürük Şurubu', 'Saç Losyonu']
+  },
+
+  // ─── 6. İLGİNÇ VE BİZARRE GERÇEKLER (FIBBAGE TARZI) ───
+  {
+    id: 'bizarre_01',
+    category: 'İlginç Gerçekler',
+    question: "Wombat adlı Avustralya keseli hayvanı, dışkısını yuvarlanıp düşmesin diye hangi geometrik şekilde yapar?",
+    correctAnswer: 'Küp Şeklinde',
+    defaultFakes: ['Üçgen Şeklinde', 'Piramit Şeklinde', 'Halka Şeklinde', 'Yıldız Şeklinde']
+  },
+  {
+    id: 'bizarre_02',
+    category: 'Tarih',
+    question: "1954 yılı kışında İstanbul Boğazı'nda insanların Avrupa'dan Asya'ya yürüyerek geçmesini sağlayan doğa olayı neydi?",
+    correctAnswer: "Karadeniz'den Gelen Devasa Buz Kütleleri",
+    defaultFakes: ['Boğazın Suyunun Çekilmesi', 'Tuna Nehrinin Patlaması', 'Deniz Üstünde Sis Duvarı', 'Köprü Provası']
+  },
+  {
+    id: 'bizarre_03',
+    category: 'İlginç Gerçekler',
+    question: "Patates cipsi, 1853'te aşçı George Crum tarafından hangi müşteriye inat olsun diye aşırı ince dilimlenip bulunmuştur?",
+    correctAnswer: 'Patateslerin Çok Kalın Olduğunu Söyleyen Huysuz Bir Müşteriye',
+    defaultFakes: ['Dişleri Olmayan Bir İhtiyara', 'Restoranın Cimri Sahibine', 'Diyetteki Bir Dükü Eğlendirmek İçin', 'Kendi Çocuğuna']
+  },
+  {
+    id: 'bizarre_04',
+    category: 'Sinema & Sanat',
+    question: "Super Mario oyununun yaratıcısı Shigeru Miyamoto, Mario'ya bıyık çizmesinin asıl teknik sebebinin ne olduğunu açıklamıştır?",
+    correctAnswer: '8-Bit Ekranda Ağız Çizmenin Çok Zor Olması',
+    defaultFakes: ['Piksel Hatasını Gizlemek İçin', 'İtalyan Tesisatçı Modası Diye', 'Kendi Bıyığına Benzetmek İçin', 'Karakter Yaşlı Görünsün Diye']
+  },
+  {
+    id: 'bizarre_05',
+    category: 'Spor',
+    question: "1968 Olimpiyatlarında alkol testi pozitif çıktığı için tarihte madalyası geri alınan ilk sporcu, heyecanını yatıştırmak için ne içmişti?",
+    correctAnswer: 'İki Bira',
+    defaultFakes: ['Bir Şişe Şarap', 'Bir Kadeh Viski', 'Konyak', 'Cin Tonik']
+  },
+  {
+    id: 'bizarre_06',
+    category: 'Tarih',
+    question: "İngiltere Parlamentosu binası içinde birinin ölmesi neden teknik olarak yasa dışı sayılmıştır?",
+    correctAnswer: 'Orada Ölen Kişiye Devlet Töreniyle Cenaze Yapılma Zorunluluğu Olduğu İçin',
+    defaultFakes: ['Kraliyet Sarayına Saygısızlık Sayıldığı İçin', 'Bina Lanetlenmesin Diye', 'Milletvekili Dokunulmazlığı Yüzünden', 'Cenaze Masrafları Çok Yüksek Diye']
+  },
+  {
+    id: 'bizarre_07',
+    category: 'Bilim & Doğa',
+    question: "Flamingoların tüylerinin doğada pembe renge bürünmesinin gerçek sebebi nedir?",
+    correctAnswer: 'Yedikleri Karides Ve Alglerdeki Karotenoid Maddesi',
+    defaultFakes: ['Güneş Işınlarından Korunma Salgısı', 'Eşleşme Dönemi Kan Akışı', 'Tuzlu Suda Yıkanma Etkisi', 'Derilerindeki Demir Oranı']
+  },
+  {
+    id: 'bizarre_08',
+    category: 'Coğrafya',
+    question: "Teksas'ta bulunan 'Ding Dong' kasabasının yol tabelaları neden her yıl onlarca kez çalınmaktadır?",
+    correctAnswer: 'İsmi Komik Bulunduğu İçin',
+    defaultFakes: ['Tabela Altın Kaplama Diye', 'Tarihi Eser Sayıldığı İçin', 'Uğur Getirdiğine İnanıldığı İçin', 'Öğrenci Geleneği Yüzünden']
+  },
+  {
+    id: 'bizarre_09',
+    category: 'Tarih',
+    question: "Eski Roma'da ziyafetlerde tıkanana kadar yemek yiyen asillerin rahatlayıp tekrar yemesi için inşa edilen özel odaya ne denirdi?",
+    correctAnswer: 'Vomitorium',
+    defaultFakes: ['Digestarium', 'Relaxoria', 'Gastroium', 'Triklinium']
+  },
+  {
+    id: 'bizarre_10',
+    category: 'İlginç Gerçekler',
+    question: "1974 yılında Londra Heathrow Havalimanı'nda bir yolcunun çantasında gümrük memurlarını şaşırtan 200 adet ne bulunmuştur?",
+    correctAnswer: 'Canlı Tıbbi Sülük',
+    defaultFakes: ['Zehirli Akrep', 'Ginepig', 'Kobra Yılanı', 'Tarantula']
   }
 ];
 

@@ -7,6 +7,7 @@ import {
 } from '@platform/sdk-core';
 import type { BluffSettings } from '../shared/types.js';
 import { formatBluffAnswer } from '../shared/types.js';
+import { BLUFF_CONFIG } from '../shared/config.js';
 import { QuestionManager } from './QuestionManager.js';
 import { AnswerManager } from './AnswerManager.js';
 import { VotingManager } from './VotingManager.js';
@@ -93,7 +94,7 @@ export class BluffTriviaGame {
     });
 
     this.friendSubjectIndex = 0;
-    this.questionManager.resetDeck();
+    this.questionManager.resetMatchDeck();
     this.startQuestionPhase();
   }
 
@@ -363,7 +364,7 @@ export class BluffTriviaGame {
       if (p) {
         p.score += gain.totalRound;
         p.roundBluffGains = gain.totalRound;
-        p.trickedCount = Math.round(gain.trickGained / 150);
+        p.trickedCount = Math.round(gain.trickGained / (BLUFF_CONFIG.pointsPerPlayerTricked || 100));
       }
     }
 

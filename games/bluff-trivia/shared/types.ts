@@ -73,6 +73,7 @@ export interface RoundScoringResult {
   playerScores: Map<string, { correctGained: number; trickGained: number; totalRound: number }>;
   bluffMasterName: string;
   bluffMasterCount: number;
+  truthStumped?: boolean;
 }
 
 /**
@@ -105,6 +106,11 @@ export function normalizeForComparison(str: string): string {
     .replace(/I/g, 'ı')
     .toLocaleLowerCase('tr-TR')
     .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
     .replace(/['".,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
     .replace(/\s+/g, ' ');
 }

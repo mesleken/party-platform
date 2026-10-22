@@ -364,6 +364,9 @@ async function bootstrap() {
   const bluffMasterBanner = document.getElementById('bluff-master-banner')!;
   const bluffMasterName = document.getElementById('bluff-master-name')!;
   const bluffMasterCount = document.getElementById('bluff-master-count')!;
+  const bluffSubmissionCounter = document.getElementById('bluff-submission-counter');
+  const bluffVotingCounter = document.getElementById('bluff-voting-counter');
+  const bluffTruthStumpedBanner = document.getElementById('bluff-truth-stumped-banner');
   const bluffRevealsGrid = document.getElementById('bluff-reveals-grid')!;
 
   // Mini Tetris Elements
@@ -1200,6 +1203,12 @@ async function bootstrap() {
           bluffStageVoting.style.display = 'none';
           bluffStageReveal.style.display = 'none';
 
+          const totalConnected = playersArray.filter((p) => p.isConnected).length;
+          const submittedCount = playersArray.filter((p) => p.isConnected && p.bluffSubmitted).length;
+          if (bluffSubmissionCounter) {
+            bluffSubmissionCounter.innerText = `${submittedCount} / ${totalConnected} Oyuncu Gönderdi`;
+          }
+
           bluffSubmittingPlayers.innerHTML = '';
           playersArray.forEach((p) => {
             const isSubject = Boolean(match.isFriendsMode && (p.id === match.subjectPlayerId || p.nickname === match.subjectPlayerName));
@@ -1223,6 +1232,12 @@ async function bootstrap() {
           bluffStageVoting.style.display = 'flex';
           bluffStageReveal.style.display = 'none';
 
+          const totalConnected = playersArray.filter((p) => p.isConnected).length;
+          const votedCount = playersArray.filter((p) => p.isConnected && p.hasVotedBluff).length;
+          if (bluffVotingCounter) {
+            bluffVotingCounter.innerText = `${votedCount} / ${totalConnected} Oy Kullanıldı`;
+          }
+
           bluffChoicesGrid.innerHTML = '';
           const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
           let choiceIdx = 0;
@@ -1245,6 +1260,14 @@ async function bootstrap() {
           bluffStageSubmitting.style.display = 'none';
           bluffStageVoting.style.display = 'none';
           bluffStageReveal.style.display = 'flex';
+
+          let anyCorrect = false;
+          match.reveals.forEach((r) => {
+            if (r.isCorrect && r.votes > 0) anyCorrect = true;
+          });
+          if (bluffTruthStumpedBanner) {
+            bluffTruthStumpedBanner.style.display = !anyCorrect ? 'block' : 'none';
+          }
 
           if (match.bluffMasterName && match.bluffMasterCount > 0) {
             bluffMasterBanner.style.display = 'block';
@@ -1278,7 +1301,7 @@ async function bootstrap() {
               card.className = 'bluff-reveal-card fake-bluff';
               const victimCount = r.votes || 0;
               const victimText = victimCount > 0
-                ? `😈 Kandırılanlar (${victimCount}): <strong>${r.votersList}</strong> (+${victimCount * 150} Puan)`
+                ? `😈 Kandırılanlar (${victimCount}): <strong>${r.votersList}</strong> (+${victimCount * 100} Puan)`
                 : '😅 Kimse kanmadı!';
               card.innerHTML = `
                 <div style="font-size:1.1rem; color:#f59e0b; font-weight:800;">
