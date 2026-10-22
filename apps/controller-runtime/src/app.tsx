@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { ControllerSDK } from '@platform/sdk-controller';
 import { QUIZ_CATEGORIES, type SessionStateType } from '@platform/sdk-core';
 import { FootballGamepad } from './FootballGamepad';
@@ -200,6 +200,51 @@ export function App() {
   const [bluffVoteTime, setBluffVoteTime] = useState(20);
   const [bluffRevealTime, setBluffRevealTime] = useState(10);
   const [bluffRounds, setBluffRounds] = useState(5);
+
+  // Oyun Seçim Karuseli / Izgara Durumu & Dokunmatik Kaydırma
+  const [lobbyGameViewMode, setLobbyGameViewMode] = useState<'carousel' | 'grid'>('carousel');
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef(0);
+  const scrollStart = useRef(0);
+  const hasMovedHorizontally = useRef(false);
+
+  const scrollCarousel = (offset: number) => {
+    if (carouselRef.current) {
+      carouselRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+    }
+  };
+
+  const handleTouchStart = (e: any) => {
+    if (!carouselRef.current) return;
+    const touch = e.touches ? e.touches[0] : e;
+    touchStartX.current = touch.clientX;
+    scrollStart.current = carouselRef.current.scrollLeft;
+    hasMovedHorizontally.current = false;
+  };
+
+  const handleTouchMove = (e: any) => {
+    if (!carouselRef.current) return;
+    const touch = e.touches ? e.touches[0] : e;
+    const deltaX = touch.clientX - touchStartX.current;
+    if (Math.abs(deltaX) > 6) {
+      hasMovedHorizontally.current = true;
+      carouselRef.current.scrollLeft = scrollStart.current - deltaX;
+    }
+  };
+
+  const handleCardClick = (gameId: string) => {
+    if (hasMovedHorizontally.current) return;
+    handleSelectGame(gameId);
+  };
+
+  useEffect(() => {
+    if (carouselRef.current && selectedGameId && lobbyGameViewMode === 'carousel') {
+      const card = carouselRef.current.querySelector(`[data-game-id="${selectedGameId}"]`) as HTMLElement;
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [selectedGameId, lobbyGameViewMode]);
 
   const handleUpdateBluffSettings = (updated: Partial<{
     category: 'genel' | 'cografya' | 'tarih' | 'spor' | 'sinema' | 'bilim' | 'arkadas';
@@ -499,31 +544,133 @@ export function App() {
           </div>
         )}
 
-        {/* Oyun Seçim Karuseli (Host değiştirebilir - Dikey & Yatay Uyumlu Kaydırmalı Kartlar) */}
+        {/* Oyun Seçim Alanı (Karusel & Izgara Modları - Dikey/Yatay Uyumlu) */}
         {isHost && (
           <div class="lobby-game-carousel-wrapper">
             <div class="lobby-carousel-header">
-              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#e2e8f0' }}>🎮 Oyun Seçin:</span>
-              <span class="lobby-carousel-hint">👈 Yana Kaydır 👉</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#e2e8f0' }}>🎮 Oyun Seçin:</span>
+                <span style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 700 }}>
+                  ({AVAILABLE_GAMES.findIndex((g) => g.id === selectedGameId) + 1}/{AVAILABLE_GAMES.length})
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  class="lobby-view-toggle-btn"
+                  onClick={() => setLobbyGameViewMode((m) => (m === 'carousel' ? 'grid' : 'carousel'))}
+                >
+                  {lobbyGameViewMode === 'carousel' ? '⊞ Tümünü Gör (Izgara)' : '⇄ Karusel (Kaydır)'}
+                </button>
+              </div>
             </div>
-            <div class="lobby-game-carousel">
-              {AVAILABLE_GAMES.map((g) => {
-                const isSelected = selectedGameId === g.id;
-                return (
-                  <button
-                    key={g.id}
-                    type="button"
-                    class={`lobby-carousel-card ${isSelected ? 'active' : ''}`}
-                    onClick={() => handleSelectGame(g.id)}
-                  >
-                    {isSelected && <span class="selected-badge">✓</span>}
-                    <span class="game-icon">{g.icon}</span>
-                    <span class="game-title">{g.title}</span>
-                    <span class="game-tag">{g.tag}</span>
-                  </button>
-                );
-              })}
-            </div>
+
+            {lobbyGameViewMode === 'carousel' ? (
+              <div style={{ position: 'relative', width: '100%' }}>
+                {/* Sol Kaydırma Butonu */}
+                <button
+                  type="button"
+                  class="lobby-carousel-arrow lobby-carousel-arrow-left"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    scrollCarousel(-160);
+                  }}
+                  aria-label="Önceki Oyunlar"
+                >
+                  ‹
+                </button>
+
+                {/* Karusel İçeriği (Dokunmatik Sürükleme Desteği) */}
+                <div
+                  ref={carouselRef}
+                  class="lobby-game-carousel"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={() => {
+                    setTimeout(() => {
+                      hasMovedHorizontally.current = false;
+                    }, 80);
+                  }}
+                  onMouseDown={handleTouchStart}
+                  onMouseMove={(e) => {
+                    if (e.buttons === 1) handleTouchMove(e);
+                  }}
+                  onMouseUp={() => {
+                    setTimeout(() => {
+                      hasMovedHorizontally.current = false;
+                    }, 80);
+                  }}
+                >
+                  {AVAILABLE_GAMES.map((g) => {
+                    const isSelected = selectedGameId === g.id;
+                    return (
+                      <div
+                        key={g.id}
+                        data-game-id={g.id}
+                        role="button"
+                        tabIndex={0}
+                        class={`lobby-carousel-card ${isSelected ? 'active' : ''}`}
+                        onClick={() => handleCardClick(g.id)}
+                      >
+                        {isSelected && <span class="selected-badge">✓</span>}
+                        <span class="game-icon">{g.icon}</span>
+                        <span class="game-title">{g.title}</span>
+                        <span class="game-tag">{g.tag}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Sağ Kaydırma Butonu */}
+                <button
+                  type="button"
+                  class="lobby-carousel-arrow lobby-carousel-arrow-right"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    scrollCarousel(160);
+                  }}
+                  aria-label="Sonraki Oyunlar"
+                >
+                  ›
+                </button>
+
+                {/* Karusel Noktaları (Sayfalama) */}
+                <div class="lobby-carousel-dots">
+                  {AVAILABLE_GAMES.map((g, idx) => (
+                    <div
+                      key={g.id}
+                      class={`carousel-dot ${selectedGameId === g.id ? 'active' : ''}`}
+                      onClick={() => {
+                        handleSelectGame(g.id);
+                        const card = carouselRef.current?.children[idx] as HTMLElement;
+                        card?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* Izgara Modu (Dikey ekranda 8 oyunun hepsi tek bakışta görünür) */
+              <div class="lobby-game-grid">
+                {AVAILABLE_GAMES.map((g) => {
+                  const isSelected = selectedGameId === g.id;
+                  return (
+                    <div
+                      key={g.id}
+                      role="button"
+                      tabIndex={0}
+                      class={`lobby-grid-card ${isSelected ? 'active' : ''}`}
+                      onClick={() => handleSelectGame(g.id)}
+                    >
+                      {isSelected && <span class="selected-badge">✓</span>}
+                      <span class="game-icon">{g.icon}</span>
+                      <span class="game-title">{g.title}</span>
+                      <span class="game-tag">{g.tag}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
