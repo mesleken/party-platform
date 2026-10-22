@@ -4,8 +4,10 @@ export interface RcRushInput {
   steer: number; // -1.0 (full left) to +1.0 (full right)
   throttle: number; // 0.0 to 1.0 (forward drive)
   brake: number; // 0.0 to 1.0 (braking / reverse)
+  handbrake?: boolean; // Drift / Handbrake button
   boost: boolean; // turbo active
   useItem: boolean; // trigger carried item
+  recover?: boolean; // respawn back on track
 }
 
 export interface CarSnapshot {

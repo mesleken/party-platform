@@ -15,8 +15,15 @@ import {
   TRACK_TOTAL_LENGTH,
   getTrackDistanceAtPoint,
 } from '../shared/track.js';
+import { DEFAULT_VEHICLE_CONFIG } from '../shared/tuning.js';
+import {
+  stepVehicleDynamics,
+  resolveObstacleCollisions,
+  recoverPlayerToTrack,
+  VehiclePhysicsState,
+} from './VehicleDynamics.js';
 
-interface PlayerRuntime {
+interface PlayerRuntime extends VehiclePhysicsState {
   id: string;
   nickname: string;
   color: string;
@@ -34,6 +41,7 @@ interface PlayerRuntime {
   wheelSteer: number;
   wheelRotation: number;
   speed: number;
+  filteredSteer: number;
   boostMeter: number;
   isBoosting: boolean;
   isDrifting: boolean;
@@ -148,6 +156,7 @@ export class RcRushGame {
       wheelSteer: 0,
       wheelRotation: 0,
       speed: 0,
+      filteredSteer: 0,
       boostMeter: 100,
       isBoosting: false,
       isDrifting: false,
@@ -194,6 +203,8 @@ export class RcRushGame {
       brake: Math.max(0, Math.min(1, input?.brake || 0)),
       boost: Boolean(input?.boost),
       useItem: Boolean(input?.useItem),
+      handbrake: Boolean(input?.handbrake),
+      recover: Boolean(input?.recover),
     };
 
     // Item kullanıldıysa
@@ -209,8 +220,8 @@ export class RcRushGame {
     this.elapsedMs = 0;
     this.raceStartTime = 0;
 
-    // 30Hz simülasyon döngüsü, 15Hz snapshot yayını (düşük CPU & bant genişliği optimizasyonu)
-    const dt = 1 / 30;
+    // 60Hz sabit fizik adımı, 30Hz snapshot yayını
+    const dt = 1 / 60;
     let tickCount = 0;
     this.interval = setInterval(() => {
       this.update(dt);
@@ -218,7 +229,7 @@ export class RcRushGame {
       if (tickCount % 2 === 0 || this.phase === 'countdown' || this.phase === 'completed') {
         this.broadcastSnapshot();
       }
-    }, 1000 / 30);
+    }, 1000 / 60);
   }
 
   public stop() {
@@ -325,170 +336,16 @@ export class RcRushGame {
   }
 
   private updateCarPhysics(p: PlayerRuntime, dt: number) {
-    if (p.finished) {
-      // Yavaşça dur
-      p.speed = Math.max(0, p.speed - 40 * dt);
-      p.x += Math.sin(p.rotation) * (p.speed / 3.6) * dt;
-      p.z += Math.cos(p.rotation) * (p.speed / 3.6) * dt;
-      return;
-    }
+    stepVehicleDynamics(p, p.input, dt);
 
-    // Roket veya yağ sebebiyle dönüyor mu?
-    if (p.isSpinning) {
-      p.spinTimerMs -= dt * 1000;
-      p.rotation += 15 * dt; // Kendi etrafında fırıl fırıl dön
-      p.speed = Math.max(10, p.speed - 60 * dt);
-      p.x += Math.sin(p.rotation) * (p.speed / 3.6) * dt;
-      p.z += Math.cos(p.rotation) * (p.speed / 3.6) * dt;
-      if (p.spinTimerMs <= 0) {
-        p.isSpinning = false;
-      }
-      return;
-    }
-
-    const maxSpeed = 115; // Normal son hız (KM/H)
-    const boostSpeed = 160; // Nitro ile son hız
-    const accelRate = 48; // Hızlanma ivmesi
-    const brakeRate = 90; // Fren ivmesi
-    const frictionRate = 18; // Sürtünme yavaşlaması
-
-    // Turbo (Boost) Mantığı
-    p.isBoosting = false;
-    if (p.input.boost && p.boostMeter > 5) {
-      p.isBoosting = true;
-      p.boostMeter = Math.max(0, p.boostMeter - 40 * dt);
-    } else {
-      // Zamanla yavaşça dolan boost
-      p.boostMeter = Math.min(100, p.boostMeter + 9 * dt);
-    }
-
-    const currentMaxSpeed = p.isBoosting ? boostSpeed : maxSpeed;
-
-    // 1. Yerel Eksen Vektörleri (Forward ve Right)
-    const fwdX = Math.sin(p.rotation);
-    const fwdZ = Math.cos(p.rotation);
-    const rightX = Math.cos(p.rotation);
-    const rightZ = -Math.sin(p.rotation);
-
-    // 2. İleri Hızlanma / Fren / Geri Vites
-    if (p.input.throttle > 0) {
-      const targetSpeed = currentMaxSpeed * p.input.throttle;
-      if (p.vForward < targetSpeed) {
-        p.vForward = Math.min(targetSpeed, p.vForward + accelRate * dt * (p.isBoosting ? 1.8 : 1.0));
-      }
-    } else if (p.input.brake > 0) {
-      if (p.vForward > 1) {
-        p.vForward = Math.max(0, p.vForward - brakeRate * dt);
-      } else {
-        // Yumuşak geri vites
-        p.vForward = Math.max(-30, p.vForward - 36 * dt);
-      }
-    } else {
-      // Boşta sürtünme
-      if (p.vForward > 0) {
-        p.vForward = Math.max(0, p.vForward - frictionRate * dt);
-      } else if (p.vForward < 0) {
-        p.vForward = Math.min(0, p.vForward + frictionRate * dt);
-      }
-    }
-
-    // Pist dışı (Carpet / Floor rough resistance) yavaşlaması
-    const distToCenter = this.getDistanceToTrack(p.x, p.z);
-    if (distToCenter > 8.5) { // Pist yarıçapı 7 + 1.5 bordür marjı
-      if (!p.isBoosting && p.vForward > 52) {
-        p.vForward = Math.max(52, p.vForward - 45 * dt);
-      }
-    }
-
-    // 3. Direksiyon & Dönüş (Three.js kamera arkadan baktığında sağa dönmek için rotasyon azalır)
-    p.wheelSteer = -p.input.steer * 0.45; // Ön tekerlek açısı
-    if (Math.abs(p.vForward) > 1.5) {
-      // Hızlı virajlarda Drift algılama (sert direksiyon ve yüksek hız)
-      p.isDrifting = Math.abs(p.input.steer) > 0.65 && Math.abs(p.vForward) > 48;
-
-      const turnSensitivity = p.isDrifting ? 3.3 : 2.55;
-      const turnRate = -p.input.steer * turnSensitivity * (p.vForward >= 0 ? 1 : -1) * dt;
-      p.rotation += turnRate;
-
-      // Virajda merkezcil kuvvetten kaynaklı yanal kayma (Lateral Slip)
-      const centripetalSlip = -p.input.steer * (p.vForward / maxSpeed) * 32;
-      p.vLateral += centripetalSlip * dt;
-
-      p.roll = -p.input.steer * (p.vForward / maxSpeed) * 0.12; // Virajda doğal gövde salınımı
-    } else {
-      p.isDrifting = false;
-      p.roll = 0;
-    }
-
-    // 4. Re-Volt Tutunma ve Yanal Sönümleme (Grip Physics)
-    const gripFactor = p.isDrifting ? 3.8 : 12.0;
-    p.vLateral *= Math.max(0, 1 - gripFactor * dt);
-
-    // 5. Dünya hız vektörünü oluştur
-    const vForwardMps = p.vForward / 3.6;
-    const vLateralMps = p.vLateral / 3.6;
-    p.vx = fwdX * vForwardMps + rightX * vLateralMps;
-    p.vz = fwdZ * vForwardMps + rightZ * vLateralMps;
-    p.speed = p.vForward;
-
-    // 6. Lastik kayma oranı (0..1) - duman ve skidmarks için
-    p.slipRatio = Math.min(1.0, Math.abs(p.vLateral) / (Math.abs(p.vForward) + 1.0));
-
-    // 7. Simüle edilmiş 4 vitesli motor devri (LED Takometre için)
-    const speedAbs = Math.abs(p.speed);
-    const gearModulo = (speedAbs % 36) / 36;
-    p.rpmNormalized = speedAbs > 140 ? 1.0 : Math.max(0.18, Math.min(1.0, 0.25 + gearModulo * 0.75));
-
-    // 8. Tekerlek dönüş animasyonu (hıza orantılı)
-    p.wheelRotation += vForwardMps * dt * 4;
-
-    // 9. Pozisyon güncelleme
-    p.x += p.vx * dt;
-    p.z += p.vz * dt;
-
-    // ─── DEVASE ODA OBJELERİ (ENGEL) ÇARPIŞMA SİSTEMİ (RE-VOLT TANGENTIAL WALL SLIDING) ───
-    for (const obs of OBSTACLE_COLLIDERS) {
-      const dx = p.x - obs.x;
-      const dz = p.z - obs.z;
-      const dist = Math.hypot(dx, dz);
-      const minDist = obs.radius + 1.3; // Engel yarıçapı + Araç genişliği
-
-      if (dist < minDist && dist > 0.001) {
-        const nx = dx / dist;
-        const nz = dz / dist;
-
-        // Arabayı engelin dışına güvenli marjla it
-        p.x = obs.x + nx * (minDist + 0.15);
-        p.z = obs.z + nz * (minDist + 0.15);
-
-        // Hız vektörünün engele göre normal bileşeni
-        const dotNormal = p.vx * nx + p.vz * nz;
-
-        if (dotNormal < 0) {
-          // Normal yönündeki hızı sönümle, teğet hızı %75 koru (Wall sliding)
-          const normVx = dotNormal * nx;
-          const normVz = dotNormal * nz;
-          const tangVx = p.vx - normVx;
-          const tangVz = p.vz - normVz;
-
-          p.vx = tangVx * 0.75 - normVx * 0.25;
-          p.vz = tangVz * 0.75 - normVz * 0.25;
-
-          p.vForward = Math.hypot(p.vx, p.vz) * 3.6 * 0.75;
-          p.speed = p.vForward;
-          p.vLateral = 0;
-
-          // Aracın burnunu yeni kayma yönüne teğet çevir
-          p.rotation = Math.atan2(p.vx, p.vz);
-
-          this.emitEvent({
-            type: 'CRASH',
-            playerId: p.id,
-            playerName: p.nickname,
-            timestamp: Date.now(),
-          });
-        }
-      }
+    const hitObstacle = resolveObstacleCollisions(p, OBSTACLE_COLLIDERS);
+    if (hitObstacle) {
+      this.emitEvent({
+        type: 'CRASH',
+        playerId: p.id,
+        playerName: p.nickname,
+        timestamp: Date.now(),
+      });
     }
 
     // Pist Dış Sınırları Çarpışması

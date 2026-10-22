@@ -1589,10 +1589,15 @@ export class RcRushRenderer3D {
     this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, camTargetY + shakeY, 0.16);
     this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, camTargetZ, 0.16);
 
+    // Viraj apexine bakış açısı (corner anticipation)
+    const steerOffset = (targetCar.wheelSteer || 0) * -2.4;
+    const cornerLookX = Math.cos(targetCar.rotation) * steerOffset;
+    const cornerLookZ = -Math.sin(targetCar.rotation) * steerOffset;
+
     const lookTarget = new THREE.Vector3(
-      targetCar.x + Math.sin(targetCar.rotation) * lookAheadDistance,
+      targetCar.x + Math.sin(targetCar.rotation) * lookAheadDistance + cornerLookX,
       targetCar.y + 1.15,
-      targetCar.z + Math.cos(targetCar.rotation) * lookAheadDistance
+      targetCar.z + Math.cos(targetCar.rotation) * lookAheadDistance + cornerLookZ
     );
     this.camera.lookAt(lookTarget);
 
@@ -1665,9 +1670,12 @@ export class RcRushRenderer3D {
         const carGroup = this.carMeshes.get(carId);
         if (!carGroup) return;
 
-        // Pozisyon ve Yön Lerp
+        // Pozisyon ve Yön Lerp (En kısa açı farkı ile 360° sıçramalarını önleyen açı interpolasyonu)
         carGroup.position.lerp(new THREE.Vector3(target.x, target.y, target.z), 0.28);
-        carGroup.rotation.y = THREE.MathUtils.lerp(carGroup.rotation.y, target.rotation, 0.28);
+        let angleDiff = target.rotation - carGroup.rotation.y;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        carGroup.rotation.y += angleDiff * 0.28;
 
         // Prosedürel Gövde Eğimi (BodyShell Pitch & Roll)
         const bodyShell = this.bodyShells.get(carId);

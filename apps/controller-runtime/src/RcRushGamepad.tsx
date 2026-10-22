@@ -19,6 +19,7 @@ export function RcRushGamepad({ sdk, myNickname, myPlayerId }: Props) {
   const [gasPressed, setGasPressed] = useState(false);
   const [brakePressed, setBrakePressed] = useState(false);
   const [boostPressed, setBoostPressed] = useState(false);
+  const [handbrakePressed, setHandbrakePressed] = useState(false);
 
   const inputRef = useRef<RcRushInput>({
     steer: 0,
@@ -26,6 +27,8 @@ export function RcRushGamepad({ sdk, myNickname, myPlayerId }: Props) {
     brake: 0,
     boost: false,
     useItem: false,
+    handbrake: false,
+    recover: false,
   });
 
   const triggerHaptic = (pattern: number | number[] = 25) => {
@@ -161,6 +164,31 @@ export function RcRushGamepad({ sdk, myNickname, myPlayerId }: Props) {
     sendInput();
   };
 
+  // Drift / El Freni
+  const handleHandbrakeStart = () => {
+    triggerHaptic(20);
+    inputRef.current.handbrake = true;
+    setHandbrakePressed(true);
+    sendInput();
+  };
+
+  const handleHandbrakeEnd = () => {
+    inputRef.current.handbrake = false;
+    setHandbrakePressed(false);
+    sendInput();
+  };
+
+  // Pist Kurtarma (Recovery)
+  const handleRecover = () => {
+    triggerHaptic([35, 45]);
+    inputRef.current.recover = true;
+    sendInput();
+    setTimeout(() => {
+      inputRef.current.recover = false;
+      sendInput();
+    }, 200);
+  };
+
   // Item Kullanımı
   const handleUseItem = () => {
     triggerHaptic(35);
@@ -172,7 +200,7 @@ export function RcRushGamepad({ sdk, myNickname, myPlayerId }: Props) {
     }, 150);
   };
 
-  // Klavye Desteği (Masaüstü / Test Kolaylığı: Ok Tuşları / WASD / Space / Shift)
+  // Klavye Desteği (Masaüstü / Test Kolaylığı: Ok Tuşları / WASD / Space / Shift / R)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
@@ -198,7 +226,11 @@ export function RcRushGamepad({ sdk, myNickname, myPlayerId }: Props) {
         inputRef.current.boost = true;
         setBoostPressed(true);
         sendInput();
-      } else if (e.key === ' ' || e.key === 'e' || e.key === 'E') {
+      } else if (e.key === ' ' || e.key === 'c' || e.key === 'C') {
+        handleHandbrakeStart();
+      } else if (e.key === 'r' || e.key === 'R') {
+        handleRecover();
+      } else if (e.key === 'e' || e.key === 'E' || e.key === 'f' || e.key === 'F') {
         handleUseItem();
       }
     };
@@ -228,6 +260,8 @@ export function RcRushGamepad({ sdk, myNickname, myPlayerId }: Props) {
         setBoostPressed(false);
         inputRef.current.boost = false;
         sendInput();
+      } else if (e.key === ' ' || e.key === 'c' || e.key === 'C') {
+        handleHandbrakeEnd();
       }
     };
 
@@ -304,8 +338,8 @@ export function RcRushGamepad({ sdk, myNickname, myPlayerId }: Props) {
           </div>
         </div>
 
-        {/* Taşınan Güçlendirme */}
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          {/* Taşınan Güçlendirme */}
           {carState?.item ? (
             <div
               style={{
@@ -319,9 +353,29 @@ export function RcRushGamepad({ sdk, myNickname, myPlayerId }: Props) {
             >
               {itemIcons[carState.item] || 'GÜÇ HAZIR'}
             </div>
-          ) : (
-            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>BOŞ</span>
-          )}
+          ) : null}
+
+          {/* Piste Dön Butonu */}
+          <button
+            type="button"
+            onClick={handleRecover}
+            title="Piste Dön"
+            style={{
+              background: 'rgba(239, 68, 68, 0.25)',
+              border: '1px solid rgba(239, 68, 68, 0.6)',
+              color: '#fca5a5',
+              padding: '0.25rem 0.55rem',
+              borderRadius: '0.5rem',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+            }}
+          >
+            <span>🔄</span> PİSTE DÖN
+          </button>
         </div>
       </div>
 
@@ -448,33 +502,68 @@ export function RcRushGamepad({ sdk, myNickname, myPlayerId }: Props) {
             </button>
           </div>
 
-          {/* GÜÇ KULLAN BUTONU (SOL ALT) */}
-          <button
-            type="button"
-            onClick={handleUseItem}
-            disabled={!carState?.item}
-            style={{
-              height: '65px',
-              background: carState?.item
-                ? 'linear-gradient(135deg, #facc15, #f59e0b)'
-                : 'rgba(255,255,255,0.06)',
-              border: carState?.item ? '2px solid #fef08a' : '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '1rem',
-              color: carState?.item ? '#0f172a' : '#475569',
-              fontSize: '1rem',
-              fontWeight: 900,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              boxShadow: carState?.item ? '0 0 25px rgba(250,204,21,0.5)' : 'none',
-              cursor: carState?.item ? 'pointer' : 'default',
-            }}
-          >
-            <span>🎯</span> GÜÇ KULLAN
-          </button>
+          {/* GÜÇ KULLAN & DRİFT BUTONLARI (SOL ALT) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', height: '65px' }}>
+            {/* GÜÇ KULLAN BUTONU */}
+            <button
+              type="button"
+              onClick={handleUseItem}
+              disabled={!carState?.item}
+              style={{
+                background: carState?.item
+                  ? 'linear-gradient(135deg, #facc15, #f59e0b)'
+                  : 'rgba(255,255,255,0.06)',
+                border: carState?.item ? '2px solid #fef08a' : '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '0.9rem',
+                color: carState?.item ? '#0f172a' : '#475569',
+                fontSize: '0.85rem',
+                fontWeight: 900,
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.3rem',
+                boxShadow: carState?.item ? '0 0 20px rgba(250,204,21,0.5)' : 'none',
+                cursor: carState?.item ? 'pointer' : 'default',
+              }}
+            >
+              <span>🎯</span> GÜÇ
+            </button>
+
+            {/* DRİFT / EL FRENİ BUTONU */}
+            <button
+              type="button"
+              onTouchStart={handleHandbrakeStart}
+              onTouchEnd={handleHandbrakeEnd}
+              onTouchCancel={handleHandbrakeEnd}
+              onMouseDown={handleHandbrakeStart}
+              onMouseUp={handleHandbrakeEnd}
+              onMouseLeave={handleHandbrakeEnd}
+              style={{
+                background: handbrakePressed
+                  ? 'linear-gradient(135deg, #a855f7, #7c3aed)'
+                  : 'linear-gradient(135deg, #334155, #1e293b)',
+                border: handbrakePressed ? '3px solid #e9d5ff' : '2px solid rgba(168,85,247,0.4)',
+                borderRadius: '0.9rem',
+                color: handbrakePressed ? '#ffffff' : '#c084fc',
+                fontSize: '0.85rem',
+                fontWeight: 900,
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.3rem',
+                boxShadow: handbrakePressed
+                  ? '0 0 25px rgba(168,85,247,0.8), inset 0 0 10px rgba(255,255,255,0.4)'
+                  : '0 6px 15px rgba(0,0,0,0.3)',
+                transform: handbrakePressed ? 'scale(0.96)' : 'scale(1)',
+                transition: 'transform 0.08s, box-shadow 0.08s',
+                cursor: 'pointer',
+              }}
+            >
+              <span>💨</span> DRİFT
+            </button>
+          </div>
         </div>
 
         {/* SAĞ TARAF: GAZ, FREN VE NİTRO */}
