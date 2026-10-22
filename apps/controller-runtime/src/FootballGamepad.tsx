@@ -135,9 +135,11 @@ export function FootballGamepad({
     setThumbPos({ x: thumbX, y: thumbY });
 
     // Normalizing -1 to +1
-    // On the pitch: +Z is up (negative screen Y), -Z is down (positive screen Y)
+    // On the 3D pitch: -Z is North (top of TV screen, forward), +Z is South (bottom of TV screen, backward)
+    // Moving thumb UP on phone (dy < 0, thumbY < 0) corresponds to moving forward (-Z)
+    // Moving thumb DOWN on phone (dy > 0, thumbY > 0) corresponds to moving backward (+Z)
     const normX = thumbX / maxRadius;
-    const normZ = -thumbY / maxRadius; // invert Y so pushing up on screen moves forward (+Z on pitch)
+    const normZ = thumbY / maxRadius;
 
     moveVector.current = { x: normX, y: normZ };
 
