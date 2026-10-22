@@ -6,6 +6,7 @@ import { LostAndFoundRenderer3D } from './LostAndFoundRenderer3D';
 import { RcRushRenderer3D } from './RcRushRenderer3D';
 import { FootballManager2DMatchEngine } from './FootballManager2DMatchEngine';
 import { TRACK_WAYPOINTS, getNormalizedMiniMapCoords } from '@games/rc-rush';
+import { generatePlayerSvgUri } from '@games/transfer-showdown';
 
 interface GameStagingInfo {
   icon: string;
@@ -2020,13 +2021,14 @@ async function bootstrap() {
               if (metaEl) metaEl.innerText = `${c.countryFlag} ${c.nationality || ''}`;
 
               if (imgEl) {
-                if (c.photoUrl) {
-                  imgEl.src = c.photoUrl;
+                const fallbackUri = generatePlayerSvgUri(c.name, c.specificRole || c.position, c.countryFlag);
+                imgEl.onerror = () => {
+                  imgEl.onerror = null;
+                  imgEl.src = fallbackUri;
                   imgEl.style.display = 'block';
-                  imgEl.onerror = () => { imgEl.style.display = 'none'; };
-                } else {
-                  imgEl.style.display = 'none';
-                }
+                };
+                imgEl.src = c.photoUrl || fallbackUri;
+                imgEl.style.display = 'block';
               }
 
               if (cardEl) {

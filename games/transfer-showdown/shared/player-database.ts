@@ -1,4 +1,5 @@
 import { PlayerCard } from './types.js';
+import { generatePlayerSvgUri } from './avatar-fallback.js';
 
 /**
  * Açılış Fiyatı Formülü (Ekonomi v1):
@@ -32,7 +33,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 94,
     startingPrice: calculateBasePrice(94),
     stats: { pac: 60, sho: 80, pas: 85, dri: 95, def: 96, phy: 93 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f5/LevYashin.JPG/330px-LevYashin.JPG",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p238439.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -48,7 +49,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 92,
     startingPrice: calculateBasePrice(92),
     stats: { pac: 50, sho: 76, pas: 80, dri: 92, def: 94, phy: 91 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d7/Norway_Italy_-_June_2025_A_44_%28Gianluigi_Buffon%29.jpg/330px-Norway_Italy_-_June_2025_A_44_%28Gianluigi_Buffon%29.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p1179.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -64,7 +65,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 92,
     startingPrice: calculateBasePrice(92),
     stats: { pac: 56, sho: 78, pas: 82, dri: 94, def: 93, phy: 88 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/Iker-Casillas-SportsTrade-2021-cropped.jpg/330px-Iker-Casillas-SportsTrade-2021-cropped.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p5479.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -80,7 +81,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 91,
     startingPrice: calculateBasePrice(91),
     stats: { pac: 58, sho: 88, pas: 91, dri: 90, def: 91, phy: 89 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b9/Manuel_Neuer_Ecuador_v_Germany_25_June_2026-148.jpg/330px-Manuel_Neuer_Ecuador_v_Germany_25_June_2026-148.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p167495.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -96,7 +97,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 91,
     startingPrice: calculateBasePrice(91),
     stats: { pac: 54, sho: 82, pas: 83, dri: 92, def: 92, phy: 91 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1e/Peter_Schmeichel_2012.jpg/330px-Peter_Schmeichel_2012.jpg",
+    photoUrl: generatePlayerSvgUri("Peter Schmeichel", "GK", "🇩🇰"),
     accentColor: "#eab308"
   },
   {
@@ -112,7 +113,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 90,
     startingPrice: calculateBasePrice(90),
     stats: { pac: 52, sho: 80, pas: 81, dri: 91, def: 91, phy: 89 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Petr_%C4%8Cech_2015.jpg/330px-Petr_%C4%8Cech_2015.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p48940.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -128,7 +129,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 89,
     startingPrice: calculateBasePrice(89),
     stats: { pac: 50, sho: 81, pas: 85, dri: 89, def: 90, phy: 86 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cf/Edwin_van_der_Sar_2011.jpg/330px-Edwin_van_der_Sar_2011.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p238435.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -144,7 +145,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 94,
     startingPrice: calculateBasePrice(94),
     stats: { pac: 86, sho: 56, pas: 75, dri: 72, def: 96, phy: 85 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d4/Paolo_Maldini_2008.jpg/330px-Paolo_Maldini_2008.jpg",
+    photoUrl: generatePlayerSvgUri("Paolo Maldini", "DEF", "🇮🇹"),
     accentColor: "#eab308"
   },
   {
@@ -160,7 +161,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 93,
     startingPrice: calculateBasePrice(93),
     stats: { pac: 83, sho: 70, pas: 89, dri: 88, def: 94, phy: 84 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e8/Franz_Beckenbauer_1974.jpg/330px-Franz_Beckenbauer_1974.jpg",
+    photoUrl: generatePlayerSvgUri("Franz Beckenbauer", "DEF", "🇩🇪"),
     accentColor: "#eab308"
   },
   {
@@ -176,7 +177,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 93,
     startingPrice: calculateBasePrice(93),
     stats: { pac: 80, sho: 48, pas: 76, dri: 74, def: 95, phy: 82 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c5/Franco_Baresi_1990.jpg/330px-Franco_Baresi_1990.jpg",
+    photoUrl: generatePlayerSvgUri("Franco Baresi", "DEF", "🇮🇹"),
     accentColor: "#eab308"
   },
   {
@@ -192,7 +193,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 91,
     startingPrice: calculateBasePrice(91),
     stats: { pac: 94, sho: 83, pas: 81, dri: 84, def: 84, phy: 86 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ef/Roberto_carlos_2011.jpg/330px-Roberto_carlos_2011.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p238424.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -208,7 +209,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 91,
     startingPrice: calculateBasePrice(91),
     stats: { pac: 92, sho: 58, pas: 82, dri: 86, def: 88, phy: 89 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d3/Cafu_2018.jpg/330px-Cafu_2018.jpg",
+    photoUrl: generatePlayerSvgUri("Cafu", "DEF", "🇧🇷"),
     accentColor: "#eab308"
   },
   {
@@ -224,7 +225,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 91,
     startingPrice: calculateBasePrice(91),
     stats: { pac: 82, sho: 44, pas: 65, dri: 68, def: 94, phy: 85 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/91/Fabio_Cannavaro_2010.jpg/330px-Fabio_Cannavaro_2010.jpg",
+    photoUrl: generatePlayerSvgUri("Fabio Cannavaro", "DEF", "🇮🇹"),
     accentColor: "#eab308"
   },
   {
@@ -240,7 +241,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 90,
     startingPrice: calculateBasePrice(90),
     stats: { pac: 72, sho: 45, pas: 68, dri: 60, def: 93, phy: 91 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7b/Carles_Puyol_2012.jpg/330px-Carles_Puyol_2012.jpg",
+    photoUrl: generatePlayerSvgUri("Carles Puyol", "DEF", "🇪🇸"),
     accentColor: "#eab308"
   },
   {
@@ -256,7 +257,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 90,
     startingPrice: calculateBasePrice(90),
     stats: { pac: 78, sho: 42, pas: 66, dri: 68, def: 93, phy: 84 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/72/Alessandro_Nesta_2012.jpg/330px-Alessandro_Nesta_2012.jpg",
+    photoUrl: generatePlayerSvgUri("Alessandro Nesta", "DEF", "🇮🇹"),
     accentColor: "#eab308"
   },
   {
@@ -272,7 +273,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 89,
     startingPrice: calculateBasePrice(89),
     stats: { pac: 83, sho: 48, pas: 68, dri: 68, def: 90, phy: 86 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2f/Rio_Ferdinand_2014.jpg/330px-Rio_Ferdinand_2014.jpg",
+    photoUrl: generatePlayerSvgUri("Rio Ferdinand", "DEF", "🏴󠁧󠁢󠁥󠁮󠁧󠁿"),
     accentColor: "#eab308"
   },
   {
@@ -288,7 +289,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 89,
     startingPrice: calculateBasePrice(89),
     stats: { pac: 75, sho: 70, pas: 75, dri: 72, def: 89, phy: 86 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3f/Sergio_Ramos_2018.jpg/330px-Sergio_Ramos_2018.jpg",
+    photoUrl: generatePlayerSvgUri("Sergio Ramos", "DEF", "🇪🇸"),
     accentColor: "#eab308"
   },
   {
@@ -304,7 +305,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 94,
     startingPrice: calculateBasePrice(94),
     stats: { pac: 83, sho: 90, pas: 95, dri: 94, def: 74, phy: 84 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f3/Zinedine_Zidane_by_Tasnim_03.jpg/330px-Zinedine_Zidane_by_Tasnim_03.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p250723.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -320,7 +321,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 94,
     startingPrice: calculateBasePrice(94),
     stats: { pac: 91, sho: 91, pas: 91, dri: 94, def: 42, phy: 73 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Johan_Cruijff_1974c.jpg/330px-Johan_Cruijff_1974c.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p242519.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -336,7 +337,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 93,
     startingPrice: calculateBasePrice(93),
     stats: { pac: 91, sho: 89, pas: 91, dri: 95, def: 38, phy: 81 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f7/Ronaldinho_Ga%C3%BAcho_2019.jpg/330px-Ronaldinho_Ga%C3%BAcho_2019.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p28130.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -352,7 +353,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 91,
     startingPrice: calculateBasePrice(91),
     stats: { pac: 88, sho: 88, pas: 90, dri: 82, def: 90, phy: 85 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Lothar_Matth%C3%A4us_2018.jpg/330px-Lothar_Matth%C3%A4us_2018.jpg",
+    photoUrl: generatePlayerSvgUri("Lothar Matthäus", "MID", "🇩🇪"),
     accentColor: "#eab308"
   },
   {
@@ -368,7 +369,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 90,
     startingPrice: calculateBasePrice(90),
     stats: { pac: 86, sho: 88, pas: 88, dri: 87, def: 80, phy: 88 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/30/Ruud_Gullit_1988.jpg/330px-Ruud_Gullit_1988.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p214100.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -384,7 +385,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 90,
     startingPrice: calculateBasePrice(90),
     stats: { pac: 77, sho: 72, pas: 95, dri: 92, def: 72, phy: 72 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Xavi_Hernandez_2012.jpg/330px-Xavi_Hernandez_2012.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p10535.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -400,7 +401,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 90,
     startingPrice: calculateBasePrice(90),
     stats: { pac: 75, sho: 74, pas: 93, dri: 92, def: 64, phy: 64 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/67/Andr%C3%A9s_Iniesta_2018.jpg/330px-Andr%C3%A9s_Iniesta_2018.jpg",
+    photoUrl: generatePlayerSvgUri("Andrés Iniesta", "MID", "🇪🇸"),
     accentColor: "#eab308"
   },
   {
@@ -416,7 +417,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 90,
     startingPrice: calculateBasePrice(90),
     stats: { pac: 70, sho: 78, pas: 95, dri: 89, def: 68, phy: 66 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/42/Andrea_Pirlo_2012.jpg/330px-Andrea_Pirlo_2012.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p214096.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -432,7 +433,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 89,
     startingPrice: calculateBasePrice(89),
     stats: { pac: 81, sho: 88, pas: 90, dri: 89, def: 48, phy: 70 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/05/Gheorghe_Hagi_2016.jpg/330px-Gheorghe_Hagi_2016.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p238443.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -448,7 +449,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 88,
     startingPrice: calculateBasePrice(88),
     stats: { pac: 74, sho: 86, pas: 91, dri: 88, def: 44, phy: 70 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/Alex_de_Souza_2011.jpg/330px-Alex_de_Souza_2011.jpg",
+    photoUrl: generatePlayerSvgUri("Alex de Souza", "MID", "🇧🇷"),
     accentColor: "#eab308"
   },
   {
@@ -464,7 +465,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 89,
     startingPrice: calculateBasePrice(89),
     stats: { pac: 80, sho: 88, pas: 90, dri: 84, def: 80, phy: 86 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Steven_Gerrard_2015.jpg/330px-Steven_Gerrard_2015.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p13743.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -480,7 +481,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 89,
     startingPrice: calculateBasePrice(89),
     stats: { pac: 78, sho: 90, pas: 88, dri: 82, def: 74, phy: 80 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Frank_Lampard_2014.jpg/330px-Frank_Lampard_2014.jpg",
+    photoUrl: generatePlayerSvgUri("Frank Lampard", "MID", "🏴󠁧󠁢󠁥󠁮󠁧󠁿"),
     accentColor: "#eab308"
   },
   {
@@ -496,7 +497,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 88,
     startingPrice: calculateBasePrice(88),
     stats: { pac: 82, sho: 74, pas: 82, dri: 81, def: 89, phy: 91 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/52/Patrick_Vieira_2016.jpg/330px-Patrick_Vieira_2016.jpg",
+    photoUrl: generatePlayerSvgUri("Patrick Vieira", "MID", "🇫🇷"),
     accentColor: "#eab308"
   },
   {
@@ -512,7 +513,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 89,
     startingPrice: calculateBasePrice(89),
     stats: { pac: 91, sho: 86, pas: 88, dri: 92, def: 44, phy: 74 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c5/Kak%C3%A1_2010.jpg/330px-Kak%C3%A1_2010.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p138449.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -528,7 +529,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 95,
     startingPrice: calculateBasePrice(95),
     stats: { pac: 95, sho: 96, pas: 93, dri: 96, def: 60, phy: 76 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/54/Pel%C3%A9_by_John_Mathew_Smith_2010.jpg/330px-Pel%C3%A9_by_John_Mathew_Smith_2010.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p237067.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -544,7 +545,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 95,
     startingPrice: calculateBasePrice(95),
     stats: { pac: 88, sho: 93, pas: 92, dri: 95, def: 42, phy: 75 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2c/Maradona-Mundial_86_con_la_copa.JPG/330px-Maradona-Mundial_86_con_la_copa.JPG",
+    photoUrl: generatePlayerSvgUri("Diego Maradona", "FWD", "🇦🇷"),
     accentColor: "#eab308"
   },
   {
@@ -560,7 +561,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 94,
     startingPrice: calculateBasePrice(94),
     stats: { pac: 97, sho: 95, pas: 81, dri: 95, def: 45, phy: 76 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b8/Ronaldo_in_2018.jpg/330px-Ronaldo_in_2018.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p37576.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -576,7 +577,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 92,
     startingPrice: calculateBasePrice(92),
     stats: { pac: 89, sho: 96, pas: 91, dri: 92, def: 46, phy: 86 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cf/Pusk%C3%A1s_Ferenc.jpg/330px-Pusk%C3%A1s_Ferenc.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p238427.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -592,7 +593,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 91,
     startingPrice: calculateBasePrice(91),
     stats: { pac: 94, sho: 91, pas: 83, dri: 90, def: 53, phy: 80 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a8/Thierry_Henry_2018.jpg/330px-Thierry_Henry_2018.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p1625.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -608,7 +609,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 91,
     startingPrice: calculateBasePrice(91),
     stats: { pac: 93, sho: 93, pas: 86, dri: 92, def: 45, phy: 79 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Eusebio_1968.jpg/330px-Eusebio_1968.jpg",
+    photoUrl: generatePlayerSvgUri("Eusébio", "FWD", "🇵🇹"),
     accentColor: "#eab308"
   },
   {
@@ -624,7 +625,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 89,
     startingPrice: calculateBasePrice(89),
     stats: { pac: 88, sho: 90, pas: 77, dri: 80, def: 50, phy: 90 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Didier_Drogba_2012.jpg/330px-Didier_Drogba_2012.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p9676.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -640,7 +641,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 89,
     startingPrice: calculateBasePrice(89),
     stats: { pac: 85, sho: 90, pas: 87, dri: 89, def: 50, phy: 86 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/36/Eric_Cantona_2010.jpg/330px-Eric_Cantona_2010.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p49369.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -656,7 +657,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 88,
     startingPrice: calculateBasePrice(88),
     stats: { pac: 87, sho: 90, pas: 83, dri: 86, def: 58, phy: 88 },
-    photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/23/Wayne_Rooney_2016.jpg/330px-Wayne_Rooney_2016.jpg",
+    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p54050.png?padding=0.7",
     accentColor: "#eab308"
   },
   {
@@ -2224,7 +2225,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 84,
     startingPrice: calculateBasePrice(84),
     stats: { pac: 93, sho: 77, pas: 75, dri: 87, def: 47, phy: 70 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p78012.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Yan Diomande", "FWD", "🇨🇮"),
     accentColor: "#1e3a8a"
   },
   {
@@ -2864,7 +2865,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 83,
     startingPrice: calculateBasePrice(83),
     stats: { pac: 81, sho: 80, pas: 76, dri: 85, def: 46, phy: 84 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p193080.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("De Gea", "GK", "🇪🇸"),
     accentColor: "#3b82f6"
   },
   {
@@ -2912,7 +2913,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 83,
     startingPrice: calculateBasePrice(83),
     stats: { pac: 77, sho: 80, pas: 84, dri: 81, def: 44, phy: 74 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p203980.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Konstantinos Fortounis", "MID", "🇬🇷"),
     accentColor: "#3b82f6"
   },
   {
@@ -5712,7 +5713,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 81,
     startingPrice: calculateBasePrice(81),
     stats: { pac: 71, sho: 49, pas: 72, dri: 69, def: 82, phy: 80 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p229668.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Mario Hermoso", "DEF", "🇪🇸"),
     accentColor: "#ca8a04"
   },
   {
@@ -6272,7 +6273,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 81,
     startingPrice: calculateBasePrice(81),
     stats: { pac: 85, sho: 69, pas: 76, dri: 81, def: 71, phy: 75 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p254817.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Maximiliano Araújo", "MID", "🇺🇾"),
     accentColor: "#16a34a"
   },
   {
@@ -6768,7 +6769,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 80,
     startingPrice: calculateBasePrice(80),
     stats: { pac: 89, sho: 76, pas: 75, dri: 84, def: 33, phy: 57 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p76687.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Estêvão", "MID", "🇧🇷"),
     accentColor: "#2563eb"
   },
   {
@@ -6784,7 +6785,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 80,
     startingPrice: calculateBasePrice(80),
     stats: { pac: 90, sho: 63, pas: 75, dri: 81, def: 75, phy: 77 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p80170.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Wesley", "DEF", "🇧🇷"),
     accentColor: "#ca8a04"
   },
   {
@@ -6848,7 +6849,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 80,
     startingPrice: calculateBasePrice(80),
     stats: { pac: 80, sho: 79, pas: 74, dri: 81, def: 54, phy: 80 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p193041.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Keylor Navas", "GK", "🇨🇷"),
     accentColor: "#3b82f6"
   },
   {
@@ -8816,7 +8817,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 80,
     startingPrice: calculateBasePrice(80),
     stats: { pac: 75, sho: 56, pas: 74, dri: 79, def: 75, phy: 76 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p278901.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Ayyoub Bouaddi", "MID", "🇲🇦"),
     accentColor: "#3b82f6"
   },
   {
@@ -8848,7 +8849,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 79,
     startingPrice: calculateBasePrice(79),
     stats: { pac: 74, sho: 53, pas: 75, dri: 70, def: 80, phy: 79 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p74462.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Gerard Martín", "DEF", "🇪🇸"),
     accentColor: "#1d4ed8"
   },
   {
@@ -8864,7 +8865,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 79,
     startingPrice: calculateBasePrice(79),
     stats: { pac: 94, sho: 74, pas: 70, dri: 80, def: 50, phy: 65 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p76042.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Víctor Muñoz", "MID", "🇪🇸"),
     accentColor: "#b91c1c"
   },
   {
@@ -8880,7 +8881,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 79,
     startingPrice: calculateBasePrice(79),
     stats: { pac: 85, sho: 78, pas: 74, dri: 80, def: 35, phy: 74 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p83494.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Rayan", "MID", "🇧🇷"),
     accentColor: "#3b82f6"
   },
   {
@@ -8976,7 +8977,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 79,
     startingPrice: calculateBasePrice(79),
     stats: { pac: 54, sho: 74, pas: 81, dri: 74, def: 80, phy: 77 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p192638.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Marcos Alonso", "DEF", "🇪🇸"),
     accentColor: "#3b82f6"
   },
   {
@@ -9360,7 +9361,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 79,
     startingPrice: calculateBasePrice(79),
     stats: { pac: 67, sho: 78, pas: 70, dri: 74, def: 44, phy: 82 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p216531.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Paulinho", "FWD", "🇵🇹"),
     accentColor: "#3b82f6"
   },
   {
@@ -11232,7 +11233,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 89, sho: 78, pas: 68, dri: 84, def: 41, phy: 67 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p71178.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Saïd El Mala", "MID", "🇩🇪"),
     accentColor: "#3b82f6"
   },
   {
@@ -11248,7 +11249,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 91, sho: 70, pas: 71, dri: 82, def: 29, phy: 52 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p71418.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Bazoumana Touré", "FWD", "🇨🇮"),
     accentColor: "#1e293b"
   },
   {
@@ -11264,7 +11265,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 72, sho: 78, pas: 69, dri: 77, def: 37, phy: 81 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p73398.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Rômulo", "FWD", "🇧🇷"),
     accentColor: "#3b82f6"
   },
   {
@@ -11280,7 +11281,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 70, sho: 60, pas: 70, dri: 72, def: 75, phy: 80 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p74091.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Gorrotxa", "MID", "🇪🇸"),
     accentColor: "#3b82f6"
   },
   {
@@ -11296,7 +11297,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 71, sho: 62, pas: 73, dri: 77, def: 73, phy: 79 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p74463.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Marc Bernal", "MID", "🇪🇸"),
     accentColor: "#1d4ed8"
   },
   {
@@ -11312,7 +11313,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 57, sho: 58, pas: 74, dri: 77, def: 74, phy: 72 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p74866.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("André", "MID", "🇧🇷"),
     accentColor: "#3b82f6"
   },
   {
@@ -11328,7 +11329,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 84, sho: 43, pas: 61, dri: 72, def: 77, phy: 79 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p75605.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Asencio", "DEF", "🇪🇸"),
     accentColor: "#1e3a8a"
   },
   {
@@ -11408,7 +11409,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 78, sho: 79, pas: 70, dri: 77, def: 38, phy: 76 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p185422.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Joshua King", "FWD", "🇳🇴"),
     accentColor: "#3b82f6"
   },
   {
@@ -11440,7 +11441,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 53, sho: 81, pas: 81, dri: 79, def: 52, phy: 61 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p188350.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Marco Reus", "MID", "🇩🇪"),
     accentColor: "#3b82f6"
   },
   {
@@ -11488,7 +11489,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 77, sho: 76, pas: 80, dri: 77, def: 63, phy: 70 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p190286.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Sergio Canales", "MID", "🇪🇸"),
     accentColor: "#3b82f6"
   },
   {
@@ -11520,7 +11521,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 54, sho: 49, pas: 49, dri: 61, def: 82, phy: 79 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p197655.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Sebastián Coates", "DEF", "🇺🇾"),
     accentColor: "#3b82f6"
   },
   {
@@ -11696,7 +11697,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 68, sho: 72, pas: 79, dri: 80, def: 65, phy: 63 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p208777.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Óliver Torres", "MID", "🇪🇸"),
     accentColor: "#3b82f6"
   },
   {
@@ -11856,7 +11857,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 71, sho: 69, pas: 77, dri: 81, def: 31, phy: 60 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p214092.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Aleksey Miranchuk", "MID", "🇷🇺"),
     accentColor: "#3b82f6"
   },
   {
@@ -12800,7 +12801,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 71, sho: 75, pas: 82, dri: 75, def: 50, phy: 64 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p235947.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Juan Brunetta", "MID", "🇦🇷"),
     accentColor: "#3b82f6"
   },
   {
@@ -13376,7 +13377,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 81, sho: 68, pas: 73, dri: 76, def: 76, phy: 77 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p245055.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Aníbal Moreno", "MID", "🇦🇷"),
     accentColor: "#3b82f6"
   },
   {
@@ -13440,7 +13441,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 79, sho: 75, pas: 78, dri: 81, def: 53, phy: 58 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p245371.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Thiago Almada", "MID", "🇦🇷"),
     accentColor: "#3b82f6"
   },
   {
@@ -14384,7 +14385,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 81, sho: 69, pas: 76, dri: 81, def: 72, phy: 85 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p262881.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Richard Ríos", "MID", "🇨🇴"),
     accentColor: "#dc2626"
   },
   {
@@ -14976,7 +14977,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 78,
     startingPrice: calculateBasePrice(78),
     stats: { pac: 90, sho: 65, pas: 69, dri: 80, def: 70, phy: 81 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p278339.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Marco Palestra", "DEF", "🇮🇹"),
     accentColor: "#2563eb"
   },
   {
@@ -15088,7 +15089,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 76,
     startingPrice: calculateBasePrice(76),
     stats: { pac: 68, sho: 40, pas: 60, dri: 63, def: 77, phy: 74 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p74295.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Arseniy Batagov", "DEF", "🇺🇦"),
     accentColor: "#831843"
   },
   {
@@ -15440,7 +15441,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 74,
     startingPrice: calculateBasePrice(74),
     stats: { pac: 62, sho: 75, pas: 76, dri: 77, def: 46, phy: 68 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p231887.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Yusuf Yazıcı", "MID", "🇹🇷"),
     accentColor: "#3b82f6"
   },
   {
@@ -15792,7 +15793,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 72,
     startingPrice: calculateBasePrice(72),
     stats: { pac: 65, sho: 33, pas: 53, dri: 54, def: 72, phy: 76 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p74981.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Chibuike Nwaiwu", "DEF", "🇳🇬"),
     accentColor: "#831843"
   },
   {
@@ -15872,7 +15873,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 72,
     startingPrice: calculateBasePrice(72),
     stats: { pac: 64, sho: 49, pas: 55, dri: 55, def: 70, phy: 80 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p225487.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Hasan Kuruçay", "DEF", "🇹🇷"),
     accentColor: "#3b82f6"
   },
   {
@@ -16096,7 +16097,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 71,
     startingPrice: calculateBasePrice(71),
     stats: { pac: 85, sho: 61, pas: 69, dri: 70, def: 63, phy: 69 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p70289.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Sidny Cabral", "DEF", "🇨🇻"),
     accentColor: "#831843"
   },
   {
@@ -16192,7 +16193,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 71,
     startingPrice: calculateBasePrice(71),
     stats: { pac: 68, sho: 70, pas: 73, dri: 72, def: 46, phy: 69 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p243914.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Efkan Bekiroğlu", "MID", "🇹🇷"),
     accentColor: "#3b82f6"
   },
   {
@@ -16240,7 +16241,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 70,
     startingPrice: calculateBasePrice(70),
     stats: { pac: 76, sho: 44, pas: 64, dri: 70, def: 66, phy: 71 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p77041.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Ognjen Mimović", "DEF", "🇷🇸"),
     accentColor: "#eab308"
   },
   {
@@ -16368,7 +16369,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 69,
     startingPrice: calculateBasePrice(69),
     stats: { pac: 83, sho: 64, pas: 62, dri: 69, def: 29, phy: 60 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p81518.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Noah Saviolo", "MID", "🇵🇹"),
     accentColor: "#831843"
   },
   {
@@ -16512,7 +16513,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 67,
     startingPrice: calculateBasePrice(67),
     stats: { pac: 75, sho: 57, pas: 59, dri: 65, def: 62, phy: 71 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p262607.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Kazımcan Karataş", "DEF", "🇹🇷"),
     accentColor: "#ea580c"
   },
   {
@@ -16528,7 +16529,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 67,
     startingPrice: calculateBasePrice(67),
     stats: { pac: 82, sho: 66, pas: 61, dri: 69, def: 37, phy: 64 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p263389.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Metehan Mimaroğlu", "MID", "🇹🇷"),
     accentColor: "#831843"
   },
   {
@@ -16560,7 +16561,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 66,
     startingPrice: calculateBasePrice(66),
     stats: { pac: 62, sho: 56, pas: 63, dri: 63, def: 57, phy: 71 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p77201.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Élan Ricardo", "MID", "🇨🇴"),
     accentColor: "#1e293b"
   },
   {
@@ -16624,7 +16625,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 66,
     startingPrice: calculateBasePrice(66),
     stats: { pac: 66, sho: 65, pas: 60, dri: 68, def: 26, phy: 65 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p271211.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Jankat Yılmaz", "GK", "🇹🇷"),
     accentColor: "#ea580c"
   },
   {
@@ -16640,7 +16641,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 65,
     startingPrice: calculateBasePrice(65),
     stats: { pac: 70, sho: 29, pas: 54, dri: 60, def: 63, phy: 71 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p70253.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Arda Ünyay", "DEF", "🇹🇷"),
     accentColor: "#ea580c"
   },
   {
@@ -16656,7 +16657,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 65,
     startingPrice: calculateBasePrice(65),
     stats: { pac: 63, sho: 30, pas: 53, dri: 54, def: 64, phy: 69 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p80731.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Yiğit Efe Demir", "DEF", "🇹🇷"),
     accentColor: "#eab308"
   },
   {
@@ -16672,7 +16673,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 64,
     startingPrice: calculateBasePrice(64),
     stats: { pac: 74, sho: 55, pas: 55, dri: 69, def: 19, phy: 56 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p72170.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Ilhan Fakili", "MID", "🇹🇷"),
     accentColor: "#1e293b"
   },
   {
@@ -16688,7 +16689,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 64,
     startingPrice: calculateBasePrice(64),
     stats: { pac: 76, sho: 46, pas: 56, dri: 68, def: 58, phy: 60 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p78160.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Renato Nhaga", "MID", "🇬🇼"),
     accentColor: "#ea580c"
   },
   {
@@ -16704,7 +16705,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 64,
     startingPrice: calculateBasePrice(64),
     stats: { pac: 71, sho: 61, pas: 62, dri: 67, def: 31, phy: 51 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p83745.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Can Armando Güner", "FWD", "🇦🇷"),
     accentColor: "#ea580c"
   },
   {
@@ -16720,7 +16721,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 64,
     startingPrice: calculateBasePrice(64),
     stats: { pac: 73, sho: 57, pas: 64, dri: 69, def: 37, phy: 51 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p252870.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Emre Demir", "MID", "🇹🇷"),
     accentColor: "#eab308"
   },
   {
@@ -16752,7 +16753,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 64,
     startingPrice: calculateBasePrice(64),
     stats: { pac: 65, sho: 54, pas: 65, dri: 66, def: 60, phy: 66 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p278168.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Eyüp Aydın", "MID", "🇹🇷"),
     accentColor: "#ea580c"
   },
   {
@@ -16768,7 +16769,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 62,
     startingPrice: calculateBasePrice(62),
     stats: { pac: 80, sho: 56, pas: 56, dri: 66, def: 26, phy: 49 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p75892.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Berat Luş", "FWD", "🇹🇷"),
     accentColor: "#ea580c"
   },
   {
@@ -16800,7 +16801,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 62,
     startingPrice: calculateBasePrice(62),
     stats: { pac: 62, sho: 61, pas: 58, dri: 63, def: 50, phy: 61 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p279001.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Onuralp Çevikkan", "GK", "🇹🇷"),
     accentColor: "#831843"
   },
   {
@@ -16816,7 +16817,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 61,
     startingPrice: calculateBasePrice(61),
     stats: { pac: 75, sho: 59, pas: 48, dri: 57, def: 42, phy: 61 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p80182.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("René Mitongo", "FWD", "🇧🇪"),
     accentColor: "#831843"
   },
   {
@@ -16832,7 +16833,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 60,
     startingPrice: calculateBasePrice(60),
     stats: { pac: 66, sho: 55, pas: 59, dri: 61, def: 52, phy: 57 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p72049.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Fahri Kerem Ay", "MID", "🇹🇷"),
     accentColor: "#1e293b"
   },
   {
@@ -16848,7 +16849,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 60,
     startingPrice: calculateBasePrice(60),
     stats: { pac: 67, sho: 62, pas: 48, dri: 60, def: 19, phy: 51 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p82888.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Ahmet Sami Bircan", "FWD", "🇹🇷"),
     accentColor: "#1e293b"
   },
   {
@@ -16864,7 +16865,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 60,
     startingPrice: calculateBasePrice(60),
     stats: { pac: 76, sho: 66, pas: 51, dri: 66, def: 26, phy: 52 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p86604.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Amara Diouf", "MID", "🇸🇳"),
     accentColor: "#eab308"
   },
   {
@@ -16880,7 +16881,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 58,
     startingPrice: calculateBasePrice(58),
     stats: { pac: 56, sho: 63, pas: 63, dri: 58, def: 23, phy: 55 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p75470.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Emir Yaşar", "GK", "🇹🇷"),
     accentColor: "#1e293b"
   },
   {
@@ -16896,7 +16897,7 @@ export const PLAYER_DATABASE: PlayerCard[] = [
     ovr: 57,
     startingPrice: calculateBasePrice(57),
     stats: { pac: 54, sho: 56, pas: 55, dri: 61, def: 25, phy: 57 },
-    photoUrl: "https://ratings-images-prod.pulse.ea.com/FC25/full/player-portraits/p75342.png?padding=0.7",
+    photoUrl: generatePlayerSvgUri("Ahmet Yıldırım", "GK", "🇹🇷"),
     accentColor: "#831843"
   },
   {

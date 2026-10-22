@@ -2,6 +2,7 @@ import { useState, useEffect } from 'preact/hooks';
 import type { ControllerSDK } from '@platform/sdk-controller';
 import {
   SquadValidator,
+  generatePlayerSvgUri,
   getFormationSlots,
   checkPositionAffinity,
   autoAssignLineup,
@@ -26,39 +27,23 @@ interface Props {
 }
 
 // Güvenilir Oyuncu Fotoğrafı & Fallback Rozet Bileşeni
-function PlayerAvatar({ url, name, flag, size = 44 }: { url?: string; name: string; flag?: string; size?: number }) {
+function PlayerAvatar({ url, name, flag, size = 44, position = 'MID' }: { url?: string; name: string; flag?: string; size?: number; position?: string }) {
   const [hasError, setHasError] = useState(false);
-  const initials = name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
 
-  if (!url || hasError) {
-    return (
-      <div style={{
-        width: `${size}px`,
-        height: `${size}px`,
-        borderRadius: '50%',
-        background: 'linear-gradient(135deg, #1e293b, #0f172a)',
-        border: '1.5px solid #38bdf8',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 900,
-        fontSize: `${Math.max(10, Math.round(size * 0.35))}px`,
-        color: '#f8fafc',
-        flexShrink: 0,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
-      }}>
-        <span>{initials}</span>
-        {flag && <span style={{ fontSize: `${Math.max(8, Math.round(size * 0.28))}px`, lineHeight: 1 }}>{flag}</span>}
-      </div>
-    );
-  }
+  useEffect(() => {
+    setHasError(false);
+  }, [url]);
+
+  const fallbackUri = generatePlayerSvgUri(name, position, flag);
+  const activeSrc = (!url || hasError) ? fallbackUri : url;
 
   return (
     <img
-      src={url}
+      src={activeSrc}
       alt={name}
-      onError={() => setHasError(true)}
+      onError={() => {
+        if (!hasError) setHasError(true);
+      }}
       style={{
         width: `${size}px`,
         height: `${size}px`,
