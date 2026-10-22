@@ -154,17 +154,27 @@ export class BallSystem {
 
       const receiver = players.find((p) => p.id === pass.receiverId) || players[0];
 
-      // Alıcı oyuncu topun yolu üzerindeyse ve top yerdeyse erken buluşma (yalnızca gerçek fiziksel mesafede <= 0.85m)
+      // Alıcı oyuncu topun yolu üzerindeyse ve top yerdeyse erken buluşma (yalnızca gerçek fiziksel mesafede <= 0.85m ve yüzü topa dönükse)
       if (
         rawProg >= 0.35 &&
         this.state.height < 0.65 &&
         receiver &&
         dist(receiver.x, receiver.y, this.state.position.x, this.state.position.y) <= 0.85
       ) {
-        this.state.height = 0;
-        this.setControlled(receiver);
-        onPassArrived(pass, receiver);
-        return;
+        const angleToBall = Math.atan2(this.state.position.y - receiver.y, this.state.position.x - receiver.x);
+        const headingDiff = Math.abs(
+          Math.atan2(
+            Math.sin(angleToBall - (receiver.heading || 0)),
+            Math.cos(angleToBall - (receiver.heading || 0))
+          )
+        );
+        const isFacingBall = headingDiff <= Math.PI * 0.48; // ~85 derece ön görüş açısı
+        if (isFacingBall) {
+          this.state.height = 0;
+          this.setControlled(receiver);
+          onPassArrived(pass, receiver);
+          return;
+        }
       }
 
       if (rawProg >= 1.0) {
@@ -231,20 +241,18 @@ export class BallSystem {
             Math.cos(angleToBall - (closestPlayer.heading || 0))
           )
         );
-        const isFacingBall = headingDiff <= Math.PI * 0.55; // <= ~100 derece ön görüş açısı
+        const isFacingBall = headingDiff <= Math.PI * 0.45; // ~81 derece ön görüş açısı
 
-        // Fiziksel temas yarıçapı: Oyuncu ancak topla gerçekten temas edebileceği mesafedeyse (<= 0.85m) ve top arkasında değilse kontrol eder
-        if (closestDist <= 0.85 && (isFacingBall || closestDist <= 0.40)) {
+        // Fiziksel temas yarıçapı: Oyuncu ancak topla gerçekten temas edebileceği mesafedeyse (<= 0.85m) ve top arkasında DEĞİLSE kontrol eder
+        if (closestDist <= 0.85 && isFacingBall) {
           this.setControlled(closestPlayer);
         } else {
-          // Oyuncu topun olduğu noktaya doğru koşar ve yönünü topa çevirir (ışınlanmayı engeller)
+          // Oyuncu topun olduğu noktaya doğru yönelir ve yönünü topa çevirir (arkasındaki topa mıknatıs gibi ışınlanmayı engeller)
           closestPlayer.targetX = this.state.position.x;
           closestPlayer.targetY = this.state.position.y;
           closestPlayer.urgency = 1.0;
           closestPlayer.action = 'SPRINT_RUN';
-          if (!isFacingBall && closestDist < 3.5) {
-            closestPlayer.heading = angleToBall;
-          }
+          closestPlayer.heading = angleToBall; // Yönünü anında topa çevirir
         }
       }
     } else if (this.state.mode === 'RESTART') {

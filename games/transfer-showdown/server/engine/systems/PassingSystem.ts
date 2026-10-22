@@ -225,25 +225,41 @@ export class PassingSystem {
     const origin: Vec2 = { x: passer.x, y: passer.y };
     const passerEff = passer.effStats || passer.stats;
 
-    // Alıcının koşu yönüne göre pürüzsüz buluşma noktası (lead point)
-    let targetX = receiver.x;
-    let targetY = receiver.y;
+    // Pasın hız ve tahmini uçuş süresini hesapla
+    const dInit = dist(receiver.x, receiver.y, origin.x, origin.y);
+    const passQualitySpeed = (passerEff.pas - 75) * 0.12;
+    const speed =
+      (passType === 'THROUGH' ? 26.0 : passType === 'CROSS' ? 22.0 : passType === 'LONG' ? 24.0 : 23.0) +
+      passQualitySpeed;
+    const estFlightSec = clamp(dInit / Math.max(16.0, speed), 0.28, 0.95);
+
+    // Alıcı oyuncunun mevcut hareket vektörü (koşan oyuncunun koşu yönüne lead)
+    const recVx = receiver.vx || 0;
+    const recVy = receiver.vy || 0;
+    const recSpeed = Math.hypot(recVx, recVy);
+
+    // Alıcının pas uçuşu esnasında kat edeceği fiziksel mesafe tahmini
+    const runAheadX = recSpeed > 0.35 ? recVx * estFlightSec : 0;
+    const runAheadY = recSpeed > 0.35 ? recVy * estFlightSec : 0;
+
+    let targetX = receiver.x + runAheadX;
+    let targetY = receiver.y + runAheadY;
 
     if (passType === 'THROUGH') {
-      const leadX = dir * clamp(3.5 + (passerEff.pas - 70) * 0.06, 2.5, 5.5);
-      targetX = lerpPassP(receiver.x, receiver.targetX, 0.5) + leadX;
-      targetY = lerpPassP(receiver.y, receiver.targetY, 0.5);
+      // Ara pası: Koşucunun ve savunma arkasının boşluğuna derin pas
+      const throughLead = dir * clamp(3.0 + (passerEff.pas - 70) * 0.05, 2.2, 5.0);
+      targetX += throughLead;
     } else if (passType === 'CROSS') {
-      const leadX = dir * 2.4;
-      targetX = clamp(lerpPassP(receiver.x, receiver.targetX, 0.6) + leadX, 6.0, 94.0);
-      targetY = clamp(lerpPassP(receiver.y, receiver.targetY, 0.6), 18.0, 46.0);
+      // Orta: Ceza sahası içine, forvetin koşu temposunun hafif önüne
+      const crossLead = dir * 2.2;
+      targetX = clamp(targetX + crossLead, 8.0, 92.0);
+      targetY = clamp(targetY, 18.0, 46.0);
     } else if (passType === 'LONG') {
-      targetX = lerpPassP(receiver.x, receiver.targetX, 0.45) + dir * 1.8;
-      targetY = lerpPassP(receiver.y, receiver.targetY, 0.45);
+      targetX += dir * 1.6;
     } else {
-      // Kısa paslarda ayağa veya hafif koşu yoluna
-      targetX = receiver.x + (receiver.targetX - receiver.x) * 0.32;
-      targetY = receiver.y + (receiver.targetY - receiver.y) * 0.32;
+      // Kısa pas: Koşan oyuncunun adımına doğru hafif ön lead (+0.35m), duran oyuncunun tam ayağına (+0.15m)
+      const leadX = dir * (recSpeed > 0.35 ? 0.35 : 0.15);
+      targetX += leadX;
     }
 
     const intendedTarget: Vec2 = {
@@ -260,11 +276,6 @@ export class PassingSystem {
     receiver.action = passType === 'THROUGH' || passType === 'CROSS' ? 'SPRINT_RUN' : 'SUPPORT';
 
     const d = dist(target.x, target.y, origin.x, origin.y);
-    const passQualitySpeed = (passerEff.pas - 75) * 0.12;
-    const speed =
-      (passType === 'THROUGH' ? 25.0 : passType === 'CROSS' ? 22.0 : passType === 'LONG' ? 24.0 : 23.0) +
-      passQualitySpeed;
-
     const flightDurationSec = clamp(d / Math.max(16.0, speed), 0.28, 0.95);
     const maxHeight =
       passType === 'CROSS' ? 2.4 : passType === 'LONG' ? 1.65 : passType === 'THROUGH' ? 0.25 : 0.05;

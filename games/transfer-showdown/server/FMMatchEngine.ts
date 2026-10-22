@@ -1273,18 +1273,37 @@ export class FMMatchEngine {
       }
     }
 
-    // Alıcı yakındaysa (<= 0.85 birim) oyuncu doğrudan ayağıyla kontrol eder; henüz varış noktasına yetişemediyse top zemine iner, hafif yuvarlanır ve alıcı koşarak alır (ışınlanmayı önler)
+    // Alıcı yakındaysa (<= 0.85 birim) ve yüzü topun geliş yönüne dönükse temiz kontrol
     const distToArrival = dist(receiver.x, receiver.y, pass.target.x, pass.target.y);
-    if (distToArrival <= 0.85) {
+    const angleToArrival = Math.atan2(pass.target.y - receiver.y, pass.target.x - receiver.x);
+    const headingDiff = Math.abs(
+      Math.atan2(
+        Math.sin(angleToArrival - (receiver.heading || 0)),
+        Math.cos(angleToArrival - (receiver.heading || 0))
+      )
+    );
+    const isFacingArrival = headingDiff <= Math.PI * 0.48; // ~85 derece ön görüş açısı
+
+    if (distToArrival <= 0.85 && isFacingArrival) {
       this.ballSystem.setControlled(receiver);
     } else {
-      const vx = clamp((receiver.x - pass.target.x) * 1.1, -3.2, 3.2);
-      const vy = clamp((receiver.y - pass.target.y) * 1.1, -3.2, 3.2);
-      this.ballSystem.setLoose({ x: pass.target.x, y: pass.target.y }, { x: vx, y: vy }, pass.attackingTeam);
+      // Top oyuncunun arkasında veya uzağında kaldıysa:
+      // Top pasın orijinal geliş momentumuyla doğal şekilde yuvarlanır, asla oyuncunun sırtına doğru çekilmez!
+      const passDx = pass.target.x - pass.origin.x;
+      const passDy = pass.target.y - pass.origin.y;
+      const passLen = Math.hypot(passDx, passDy) || 1;
+      const residualSpeed = clamp(pass.speed * 0.16, 0.8, 2.6);
+      const rollVx = (passDx / passLen) * residualSpeed;
+      const rollVy = (passDy / passLen) * residualSpeed;
+
+      this.ballSystem.setLoose({ x: pass.target.x, y: pass.target.y }, { x: rollVx, y: rollVy }, pass.attackingTeam);
+
+      // Oyuncu durup geriye/yana doğru düşen topa döner ve topa doğru hareket eder
       receiver.targetX = pass.target.x;
       receiver.targetY = pass.target.y;
+      receiver.heading = angleToArrival;
       receiver.urgency = 1.0;
-      receiver.action = 'SPRINT_RUN';
+      receiver.action = 'SUPPORT';
     }
 
     const dir = attTeam.attackDirection;
@@ -1698,7 +1717,24 @@ export class FMMatchEngine {
       if (p.id !== interceptor.id && p.action !== 'IDLE') p.action = 'IDLE';
     }
 
-    this.ballSystem.setControlled(interceptor);
+    const ballPos = this.ballSystem.getPosition();
+    const dToBall = dist(interceptor.x, interceptor.y, ballPos.x, ballPos.y);
+
+    if (dToBall <= 0.85) {
+      interceptor.heading = Math.atan2(ballPos.y - interceptor.y, ballPos.x - interceptor.x);
+      this.ballSystem.setControlled(interceptor);
+    } else {
+      // Araya girildiğinde savunmacı hemen topla fiziksel temas noktasında değilse top sekerek gevşer, savunmacı koşar (ışınlanma engeli)
+      const vel = this.ballSystem.getVelocity();
+      const vx = clamp(vel.x * 0.25, -2.0, 2.0);
+      const vy = clamp(vel.y * 0.25, -2.0, 2.0);
+      this.ballSystem.setLoose({ x: ballPos.x, y: ballPos.y }, { x: vx, y: vy }, newTeamIdx);
+      interceptor.targetX = ballPos.x;
+      interceptor.targetY = ballPos.y;
+      interceptor.heading = Math.atan2(ballPos.y - interceptor.y, ballPos.x - interceptor.x);
+      interceptor.urgency = 1.0;
+      interceptor.action = 'SPRINT_RUN';
+    }
     const team = newTeamIdx === 0 ? this.homeTeam : this.awayTeam;
     const isCounter = team.style.tempo >= 1.05 && toOwn(interceptor.x, team.attackDirection) > 25;
     this.playPhase = isCounter ? 'COUNTER_ATTACK' : 'BUILD_UP';

@@ -19,6 +19,17 @@ const COLOR_PALETTE = [
   '#84cc16'
 ];
 
+const COLOR_NAMES: Record<string, string> = {
+  '#ef4444': 'Kırmızı Ateş',
+  '#3b82f6': 'Okyanus Mavisi',
+  '#10b981': 'Zümrüt Yeşili',
+  '#f59e0b': 'Güneş Sarısı',
+  '#8b5cf6': 'Kozmik Mor',
+  '#ec4899': 'Neon Pembe',
+  '#06b6d4': 'Buz Turkuazı',
+  '#84cc16': 'Fıstık Yeşili'
+};
+
 const COSTUME_ITEMS = [
   { id: 'standard', name: 'Standart', icon: '🏎️' },
   { id: 'retro_racer', name: 'Retro 90s', icon: '🕹️' },
@@ -318,12 +329,14 @@ export function App() {
 
   const handleSelectColor = (color: string) => {
     setMyColor(color);
-    sdk.customizePlayer({ color });
+    const costumeIcon = COSTUME_ITEMS.find((c) => c.id === myCostume)?.icon || '🏎️';
+    sdk.customizePlayer({ color, costume: myCostume, avatar: costumeIcon });
   };
 
   const handleSelectCostume = (costume: string) => {
     setMyCostume(costume);
-    sdk.customizePlayer({ costume });
+    const costumeIcon = COSTUME_ITEMS.find((c) => c.id === costume)?.icon || '🏎️';
+    sdk.customizePlayer({ color: myColor, costume, avatar: costumeIcon });
   };
 
   const handleLaunchMatch = () => {
@@ -431,8 +444,43 @@ export function App() {
   if (gameStatus === 'lobby') {
     return (
       <div class="container">
-        <h2 style={{ color: '#94a3b8', margin: '0' }}>Oda: {roomCode}</h2>
-        <h1 style={{ fontSize: '2.5rem', margin: '0.6rem 0' }}>{nickname}</h1>
+        <h2 style={{ color: '#94a3b8', margin: '0', fontSize: '0.95rem', letterSpacing: '0.06em' }}>ODA: {roomCode}</h2>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.4rem',
+          margin: '0.6rem 0 1rem 0'
+        }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            background: `radial-gradient(circle at 35% 35%, ${myColor}55 0%, #0f172a 85%)`,
+            border: `3px solid ${myColor}`,
+            boxShadow: `0 0 20px ${myColor}77`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '2rem',
+            transition: 'all 0.3s ease'
+          }}>
+            {COSTUME_ITEMS.find((c) => c.id === myCostume)?.icon || '🏎️'}
+          </div>
+          <h1 style={{ fontSize: '2.2rem', margin: 0, color: '#f8fafc' }}>{nickname}</h1>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '0.8rem',
+            fontWeight: 800,
+            color: myColor
+          }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: myColor, boxShadow: `0 0 6px ${myColor}` }} />
+            {COLOR_NAMES[myColor] || 'Renk Paketi'}
+          </div>
+        </div>
 
         {isHost && (
           <div style={{ marginBottom: '1rem', color: '#fbbf24', fontWeight: 'bold' }}>
@@ -937,10 +985,68 @@ export function App() {
         {/* Tab 1: Özelleştirme */}
         {stagingTab === 'customize' && (
           <div style={{ width: '100%', maxWidth: '420px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Canlı Avatar Önizleme Hero Kartı */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98))',
+              border: `2.5px solid ${myColor}`,
+              borderRadius: '1.2rem',
+              padding: '1.2rem',
+              textAlign: 'center',
+              boxShadow: `0 0 25px ${myColor}44, inset 0 0 20px ${myColor}22`,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.6rem',
+              transition: 'all 0.35s ease'
+            }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.08em' }}>
+                Canlı Avatar Önizleme
+              </div>
+              <div style={{
+                width: '76px',
+                height: '76px',
+                borderRadius: '50%',
+                background: `radial-gradient(circle at 35% 35%, ${myColor}66 0%, #0f172a 85%)`,
+                border: `3.5px solid ${myColor}`,
+                boxShadow: `0 0 25px ${myColor}88, inset 0 0 15px ${myColor}44`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2.5rem',
+                transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}>
+                {COSTUME_ITEMS.find((c) => c.id === myCostume)?.icon || '🏎️'}
+              </div>
+              <div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#f8fafc' }}>
+                  {nickname}
+                </div>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: `${myColor}25`,
+                  border: `1px solid ${myColor}`,
+                  borderRadius: '12px',
+                  padding: '3px 10px',
+                  marginTop: '4px',
+                  fontSize: '0.8rem',
+                  fontWeight: 800,
+                  color: myColor,
+                  transition: 'all 0.3s ease'
+                }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: myColor, boxShadow: `0 0 6px ${myColor}` }} />
+                  {COLOR_NAMES[myColor] || 'Seçili Renk'} • {COSTUME_ITEMS.find((c) => c.id === myCostume)?.name || 'Standart'}
+                </div>
+              </div>
+            </div>
+
             {/* Renk Paleti */}
             <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '1rem', padding: '0.9rem', textAlign: 'left' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.6rem' }}>
-                🎨 Renk Paketi
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#e2e8f0' }}>🎨 Renk Paketi Seç:</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: myColor }}>{COLOR_NAMES[myColor] || ''}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.6rem' }}>
                 {COLOR_PALETTE.map((c) => (

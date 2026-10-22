@@ -115,6 +115,31 @@ const COSTUME_LABELS: Record<string, string> = {
   toxic_surge: '☣️ Zehirli Fırtına'
 };
 
+const COSTUME_ICONS: Record<string, string> = {
+  standard: '🏎️',
+  retro_racer: '🕹️',
+  cyber_neon: '⚡',
+  stealth_shadow: '🥷',
+  golden_legend: '🏆',
+  toxic_surge: '☣️'
+};
+
+const COLOR_NAMES: Record<string, string> = {
+  '#ef4444': 'Kırmızı',
+  '#3b82f6': 'Mavi',
+  '#10b981': 'Yeşil',
+  '#f59e0b': 'Sarı',
+  '#8b5cf6': 'Mor',
+  '#ec4899': 'Pembe',
+  '#06b6d4': 'Turkuaz',
+  '#84cc16': 'Fıstık'
+};
+
+function getCostumeIcon(costume?: string): string {
+  if (!costume) return '⚡';
+  return COSTUME_ICONS[costume] || '⚡';
+}
+
 async function bootstrap() {
   const statusView = document.getElementById('status-view')!;
   const lobbyView = document.getElementById('lobby-view')!;
@@ -153,7 +178,10 @@ async function bootstrap() {
   const pauseSwitchBtn = document.getElementById('pause-switch-btn')!;
   const pauseLobbyBtn = document.getElementById('pause-lobby-btn')!;
 
-  // Game Selector Cards
+  // Game Selector Cards & Carousel
+  const gamesCarousel = document.getElementById('games-carousel')!;
+  const carouselBtnPrev = document.getElementById('carousel-btn-prev');
+  const carouselBtnNext = document.getElementById('carousel-btn-next');
   const cardReactionRush = document.getElementById('card-reaction-rush')!;
   const cardQuizArena = document.getElementById('card-quiz-arena')!;
   const cardMiniFootball = document.getElementById('card-mini-football')!;
@@ -423,38 +451,73 @@ async function bootstrap() {
       }
     });
 
+    // Carousel Yatay Kaydırma Kontrolleri (Ok Butonları, Fare Tekerleği ve Sürükleme)
+    if (carouselBtnPrev) {
+      carouselBtnPrev.onclick = () => {
+        gamesCarousel.scrollBy({ left: -260, behavior: 'smooth' });
+      };
+    }
+    if (carouselBtnNext) {
+      carouselBtnNext.onclick = () => {
+        gamesCarousel.scrollBy({ left: 260, behavior: 'smooth' });
+      };
+    }
+
+    gamesCarousel.addEventListener('wheel', (e) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        gamesCarousel.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+
+    let isCarouselDown = false;
+    let carouselStartX = 0;
+    let carouselScrollLeft = 0;
+    let isCarouselDragging = false;
+
+    gamesCarousel.addEventListener('mousedown', (e) => {
+      isCarouselDown = true;
+      isCarouselDragging = false;
+      carouselStartX = e.pageX - gamesCarousel.offsetLeft;
+      carouselScrollLeft = gamesCarousel.scrollLeft;
+    });
+
+    gamesCarousel.addEventListener('mouseleave', () => {
+      isCarouselDown = false;
+    });
+
+    gamesCarousel.addEventListener('mouseup', () => {
+      isCarouselDown = false;
+      setTimeout(() => {
+        isCarouselDragging = false;
+      }, 50);
+    });
+
+    gamesCarousel.addEventListener('mousemove', (e) => {
+      if (!isCarouselDown) return;
+      e.preventDefault();
+      const x = e.pageX - gamesCarousel.offsetLeft;
+      const walk = (x - carouselStartX) * 1.5;
+      if (Math.abs(walk) > 5) {
+        isCarouselDragging = true;
+      }
+      gamesCarousel.scrollLeft = carouselScrollLeft - walk;
+    });
+
     // Oyun Seçimi (Lobi)
-    cardReactionRush.onclick = () => {
-      sdk.selectGame('reaction-rush');
+    const handleGameCardClick = (gameId: string) => {
+      if (isCarouselDragging) return;
+      sdk.selectGame(gameId);
     };
 
-    cardQuizArena.onclick = () => {
-      sdk.selectGame('quiz-arena');
-    };
-
-    cardMiniFootball.onclick = () => {
-      sdk.selectGame('mini-football');
-    };
-
-    cardBluffTrivia.onclick = () => {
-      sdk.selectGame('bluff-trivia');
-    };
-
-    cardMiniTetris.onclick = () => {
-      sdk.selectGame('mini-tetris');
-    };
-
-    cardLostAndFound.onclick = () => {
-      sdk.selectGame('lost-and-found');
-    };
-
-    cardRcRush.onclick = () => {
-      sdk.selectGame('rc-rush');
-    };
-
-    cardTransferShowdown.onclick = () => {
-      sdk.selectGame('transfer-showdown');
-    };
+    cardReactionRush.onclick = () => handleGameCardClick('reaction-rush');
+    cardQuizArena.onclick = () => handleGameCardClick('quiz-arena');
+    cardMiniFootball.onclick = () => handleGameCardClick('mini-football');
+    cardBluffTrivia.onclick = () => handleGameCardClick('bluff-trivia');
+    cardMiniTetris.onclick = () => handleGameCardClick('mini-tetris');
+    cardLostAndFound.onclick = () => handleGameCardClick('lost-and-found');
+    cardRcRush.onclick = () => handleGameCardClick('rc-rush');
+    cardTransferShowdown.onclick = () => handleGameCardClick('transfer-showdown');
 
     // Buton Eylemleri
     startGameBtn.onclick = () => {
@@ -546,17 +609,38 @@ async function bootstrap() {
         cardRcRush.classList.toggle('selected', selected === 'rc-rush');
         cardTransferShowdown.classList.toggle('selected', selected === 'transfer-showdown');
 
+        // Seçilen kartı yumuşakça odak noktasına kaydır
+        const activeCard = document.getElementById(`card-${selected}`);
+        if (activeCard && gamesCarousel) {
+          activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+
         playersList.innerHTML = '';
         playersArray.forEach((p) => {
           const card = document.createElement('div');
           card.className = `player-card ${p.isReady ? 'ready' : ''}`;
           const hostBadge = p.isHost ? '👑 ' : '';
           const readyBadge = p.isReady
-            ? '<span style="color:#22c55e;">HAZIR</span>'
-            : '<span style="color:#94a3b8;">BEKLİYOR</span>';
+            ? '<span style="color:#22c55e; font-weight:800; font-size:0.85rem;">✓ HAZIR</span>'
+            : '<span style="color:#94a3b8; font-weight:600; font-size:0.85rem;">⏳ BEKLİYOR</span>';
+
+          const pColor = p.color || '#3b82f6';
+          const avatarIcon = getCostumeIcon(p.costume);
+          const colorName = COLOR_NAMES[pColor] || 'Özel';
 
           card.innerHTML = `
-            <div>${hostBadge}${p.nickname}</div>
+            <div class="player-card-content">
+              <div class="player-card-avatar" style="background: radial-gradient(circle at 35% 35%, ${pColor}44 0%, #0f172a 90%); border: 2.5px solid ${pColor}; box-shadow: 0 0 12px ${pColor}66;">
+                ${avatarIcon}
+              </div>
+              <div class="player-name-col">
+                <div style="color:#f8fafc; font-weight:800; font-size:1.1rem;">${hostBadge}${p.nickname}</div>
+                <div class="player-card-color-tag" style="color:${pColor};">
+                  <span style="width:6px; height:6px; border-radius:50%; background:${pColor}; display:inline-block;"></span>
+                  ${colorName}
+                </div>
+              </div>
+            </div>
             <div>${readyBadge}</div>
           `;
           playersList.appendChild(card);
@@ -662,17 +746,27 @@ async function bootstrap() {
             ? '<span style="color:#22c55e; font-weight:800; font-size:0.85rem;">✓ HAZIR</span>'
             : '<span style="color:#f59e0b; font-weight:700; font-size:0.85rem;">⏳ BEKLİYOR</span>';
 
-          const costumeLabel = COSTUME_LABELS[p.costume] || p.costume || 'Standart';
+          const costumeLabel = COSTUME_LABELS[p.costume] || '🏎️ Standart';
           const playerColor = p.color || '#3b82f6';
+          const avatarIcon = getCostumeIcon(p.costume);
+          const colorName = COLOR_NAMES[playerColor] || 'Özel';
 
           card.innerHTML = `
-            <div class="staging-player-header">
-              <div class="staging-player-name">${hostBadge}${p.nickname}</div>
-              <div>${readyBadge}</div>
+            <div class="staging-avatar-circle" style="background: radial-gradient(circle at 35% 35%, ${playerColor}55 0%, #1e293b 85%); border: 3px solid ${playerColor}; box-shadow: 0 0 16px ${playerColor}77;">
+              ${avatarIcon}
             </div>
-            <div class="staging-player-tags">
-              <div class="staging-color-dot" style="background-color: ${playerColor}; box-shadow: 0 0 8px ${playerColor};"></div>
-              <div class="staging-costume-tag">${costumeLabel}</div>
+            <div class="staging-player-info">
+              <div class="staging-player-header">
+                <div class="staging-player-name">${hostBadge}${p.nickname}</div>
+                <div>${readyBadge}</div>
+              </div>
+              <div class="staging-player-tags">
+                <div class="staging-color-tag" style="background: ${playerColor}22; border: 1.5px solid ${playerColor}; color: ${playerColor};">
+                  <span style="width:7px; height:7px; border-radius:50%; background: ${playerColor}; display:inline-block;"></span>
+                  ${colorName}
+                </div>
+                <div class="staging-costume-tag">${costumeLabel}</div>
+              </div>
             </div>
           `;
           stagingPlayersGrid.appendChild(card);

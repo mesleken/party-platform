@@ -119,9 +119,9 @@ export class RcRushGame {
     }));
   }
 
-  public addPlayer(id: string, nickname: string) {
+  public addPlayer(id: string, nickname: string, preferredColor?: string) {
     const pIndex = this.players.size;
-    const color = CAR_COLORS[pIndex % CAR_COLORS.length];
+    const color = preferredColor || CAR_COLORS[pIndex % CAR_COLORS.length];
     const carModel = CAR_MODELS[pIndex % CAR_MODELS.length];
 
     // Grid pozisyonu (Start çizgisinin gerisinde 2'li sıra, pist +X yönünde uzanır)

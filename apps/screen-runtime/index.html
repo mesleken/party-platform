@@ -83,7 +83,7 @@
       }
       #players-list {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 0.8rem;
         align-content: start;
         overflow-y: auto;
@@ -91,18 +91,42 @@
       .player-card {
         background: #1e293b;
         border: 2px solid #334155;
-        padding: 1rem 1.2rem;
-        border-radius: 0.8rem;
+        padding: 0.75rem 1rem;
+        border-radius: 0.9rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         font-weight: 600;
-        transition: all 0.2s ease;
+        transition: all 0.25s ease;
       }
       .player-card.ready {
         border-color: #22c55e;
         background: rgba(34, 197, 94, 0.1);
+      }
+      .player-card-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+      }
+      .player-card-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+      .player-card-color-tag {
+        font-size: 0.72rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        letter-spacing: 0.02em;
       }
       .game-launcher-section {
         flex: 3;
@@ -113,19 +137,97 @@
         display: flex;
         flex-direction: column;
         justify-content: space-between;
+        overflow: hidden;
+      }
+      .game-selector-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.8rem;
       }
       .game-selector-title {
         font-size: 1.3rem;
         color: #94a3b8;
         font-weight: 700;
-        margin-bottom: 0.8rem;
         text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+      .game-carousel-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 1rem;
+      }
+      .carousel-nav-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 10;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: rgba(15, 23, 42, 0.9);
+        border: 2px solid #38bdf8;
+        color: #f8fafc;
+        font-size: 1.6rem;
+        font-weight: 900;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), 0 0 12px rgba(56, 189, 248, 0.4);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        user-select: none;
+      }
+      .carousel-nav-btn:hover {
+        background: #38bdf8;
+        color: #0f172a;
+        transform: translateY(-50%) scale(1.15);
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.7);
+      }
+      .carousel-nav-btn:active {
+        transform: translateY(-50%) scale(0.95);
+      }
+      .carousel-nav-btn.prev-btn {
+        left: -12px;
+      }
+      .carousel-nav-btn.next-btn {
+        right: -12px;
       }
       .games-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 0.8rem;
-        margin-bottom: 1rem;
+        display: flex;
+        flex-direction: row;
+        gap: 1.1rem;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-behavior: smooth;
+        padding: 0.8rem 0.6rem 1.2rem 0.6rem;
+        width: 100%;
+        cursor: grab;
+        user-select: none;
+        scrollbar-width: thin;
+        scrollbar-color: #38bdf8 rgba(30, 41, 59, 0.6);
+        -webkit-overflow-scrolling: touch;
+      }
+      .games-grid:active {
+        cursor: grabbing;
+      }
+      .games-grid::-webkit-scrollbar {
+        height: 8px;
+      }
+      .games-grid::-webkit-scrollbar-track {
+        background: rgba(15, 23, 42, 0.5);
+        border-radius: 4px;
+      }
+      .games-grid::-webkit-scrollbar-thumb {
+        background: #38bdf8;
+        border-radius: 4px;
+      }
+      .games-grid::-webkit-scrollbar-thumb:hover {
+        background: #0284c7;
       }
       .bluff-choice-card {
         background: #1e293b;
@@ -379,25 +481,43 @@
       }
       .staging-players-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 0.8rem;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 0.9rem;
         align-content: start;
         flex: 1;
         overflow-y: auto;
       }
       .staging-player-card {
-        background: rgba(30, 41, 59, 0.7);
+        background: rgba(30, 41, 59, 0.75);
         border: 2px solid #334155;
-        border-radius: 1rem;
-        padding: 0.9rem 1rem;
+        border-radius: 1.2rem;
+        padding: 0.9rem 1.1rem;
         display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        transition: all 0.2s ease;
+        align-items: center;
+        gap: 1rem;
+        transition: all 0.3s ease;
       }
       .staging-player-card.ready {
         border-color: #22c55e;
-        box-shadow: 0 0 15px rgba(34, 197, 94, 0.25);
+        box-shadow: 0 0 18px rgba(34, 197, 94, 0.3);
+      }
+      .staging-avatar-circle {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+      }
+      .staging-player-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        min-width: 0;
       }
       .staging-player-header {
         display: flex;
@@ -406,27 +526,35 @@
       }
       .staging-player-name {
         font-weight: 800;
-        font-size: 1.1rem;
+        font-size: 1.15rem;
         color: #f8fafc;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .staging-player-tags {
         display: flex;
         gap: 0.5rem;
         align-items: center;
         font-size: 0.8rem;
+        flex-wrap: wrap;
       }
-      .staging-color-dot {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        border: 2px solid white;
+      .staging-color-tag {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
       }
       .staging-costume-tag {
         background: rgba(255, 255, 255, 0.08);
-        padding: 0.2rem 0.6rem;
-        border-radius: 0.4rem;
+        padding: 2px 7px;
+        border-radius: 6px;
         color: #cbd5e1;
         font-weight: 700;
+        font-size: 0.75rem;
       }
 
       /* ─── PAUSE OVERLAY ─── */
@@ -759,63 +887,72 @@
         </div>
 
         <div class="game-launcher-section">
-          <div class="game-selector-title">OYUN SEÇİN</div>
-          <div class="games-grid">
-            <!-- Oyun 1: Reaction Rush -->
-            <div class="game-card-select selected" id="card-reaction-rush">
-              <div class="game-card-icon">⚡</div>
-              <div class="game-card-title">Reaction Rush</div>
-              <div class="game-card-desc">Yeşili görünce en hızlı basan kazanır!</div>
+          <div class="game-selector-header">
+            <div class="game-selector-title">🎮 OYUN SEÇİN (8 OYUN)</div>
+            <div style="font-size: 0.85rem; color: #38bdf8; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+              <span>◀ Yana kaydırın ▶</span>
             </div>
+          </div>
+          <div class="game-carousel-wrapper">
+            <button class="carousel-nav-btn prev-btn" id="carousel-btn-prev" title="Önceki Oyunlar" aria-label="Önceki">‹</button>
+            <div class="games-grid" id="games-carousel">
+              <!-- Oyun 1: Reaction Rush -->
+              <div class="game-card-select selected" id="card-reaction-rush">
+                <div class="game-card-icon">⚡</div>
+                <div class="game-card-title">Reaction Rush</div>
+                <div class="game-card-desc">Yeşili görünce en hızlı basan kazanır!</div>
+              </div>
 
-            <!-- Oyun 2: Quiz Arena -->
-            <div class="game-card-select" id="card-quiz-arena">
-              <div class="game-card-icon">🧠</div>
-              <div class="game-card-title">Quiz Arena</div>
-              <div class="game-card-desc">Genel kültür ve bilgi savaşı! Hızlı cevapla puanı kap.</div>
-            </div>
+              <!-- Oyun 2: Quiz Arena -->
+              <div class="game-card-select" id="card-quiz-arena">
+                <div class="game-card-icon">🧠</div>
+                <div class="game-card-title">Quiz Arena</div>
+                <div class="game-card-desc">Genel kültür ve bilgi savaşı! Hızlı cevapla puanı kap.</div>
+              </div>
 
-            <!-- Oyun 3: Mini Football -->
-            <div class="game-card-select" id="card-mini-football">
-              <div class="game-card-icon">⚽</div>
-              <div class="game-card-title">Mini Football</div>
-              <div class="game-card-desc">3D Arcade Futbol! Pas, şut, kayarak müdahale ve dinamik maç!</div>
-            </div>
+              <!-- Oyun 3: Mini Football -->
+              <div class="game-card-select" id="card-mini-football">
+                <div class="game-card-icon">⚽</div>
+                <div class="game-card-title">Mini Football</div>
+                <div class="game-card-desc">3D Arcade Futbol! Pas, şut, kayarak müdahale ve dinamik maç!</div>
+              </div>
 
-            <!-- Oyun 4: Bluff Trivia -->
-            <div class="game-card-select" id="card-bluff-trivia">
-              <div class="game-card-icon">🎭</div>
-              <div class="game-card-title">Bluff Trivia</div>
-              <div class="game-card-desc">Blöf yap, herkesi kandır! Gerçek cevabı bul ve puanları topla.</div>
-            </div>
+              <!-- Oyun 4: Bluff Trivia -->
+              <div class="game-card-select" id="card-bluff-trivia">
+                <div class="game-card-icon">🎭</div>
+                <div class="game-card-title">Bluff Trivia</div>
+                <div class="game-card-desc">Blöf yap, herkesi kandır! Gerçek cevabı bul ve puanları topla.</div>
+              </div>
 
-            <!-- Oyun 5: Mini Tetris -->
-            <div class="game-card-select" id="card-mini-tetris">
-              <div class="game-card-icon">🧱</div>
-              <div class="game-card-title">Mini Tetris</div>
-              <div class="game-card-desc">Battle Royale Tetris! Satır temizle, rakiplerine garbage blok gönder!</div>
-            </div>
+              <!-- Oyun 5: Mini Tetris -->
+              <div class="game-card-select" id="card-mini-tetris">
+                <div class="game-card-icon">🧱</div>
+                <div class="game-card-title">Mini Tetris</div>
+                <div class="game-card-desc">Battle Royale Tetris! Satır temizle, rakiplerine garbage blok gönder!</div>
+              </div>
 
-            <!-- Oyun 6: Lost & Found -->
-            <div class="game-card-select" id="card-lost-and-found">
-              <div class="game-card-icon">🧸</div>
-              <div class="game-card-title">Lost & Found</div>
-              <div class="game-card-desc">It Takes Two tarzı 2 kişilik ortak macera! Mıknatıs, kanca ve bulmaca!</div>
-            </div>
+              <!-- Oyun 6: Lost & Found -->
+              <div class="game-card-select" id="card-lost-and-found">
+                <div class="game-card-icon">🧸</div>
+                <div class="game-card-title">Lost & Found</div>
+                <div class="game-card-desc">It Takes Two tarzı 2 kişilik ortak macera! Mıknatıs, kanca ve bulmaca!</div>
+              </div>
 
-            <!-- Oyun 7: RC Rush -->
-            <div class="game-card-select" id="card-rc-rush">
-              <div class="game-card-icon">🏎️</div>
-              <div class="game-card-title">RC Rush</div>
-              <div class="game-card-desc">Re-Volt esintili 3D RC araba yarışı! Nitro, roket ve devasa oyuncak odası!</div>
-            </div>
+              <!-- Oyun 7: RC Rush -->
+              <div class="game-card-select" id="card-rc-rush">
+                <div class="game-card-icon">🏎️</div>
+                <div class="game-card-title">RC Rush</div>
+                <div class="game-card-desc">Re-Volt esintili 3D RC araba yarışı! Nitro, roket ve devasa oyuncak odası!</div>
+              </div>
 
-            <!-- Oyun 8: Transfer Showdown -->
-            <div class="game-card-select" id="card-transfer-showdown">
-              <div class="game-card-icon">⚽</div>
-              <div class="game-card-title">Transfer Showdown</div>
-              <div class="game-card-desc">Açık artırma, 100 kredi, kadro & taktik uyumu ve 3D canlı maç simülasyonu!</div>
+              <!-- Oyun 8: Transfer Showdown -->
+              <div class="game-card-select" id="card-transfer-showdown">
+                <div class="game-card-icon">⚽</div>
+                <div class="game-card-title">Transfer Showdown</div>
+                <div class="game-card-desc">Açık artırma, 100 kredi, kadro & taktik uyumu ve 3D canlı maç simülasyonu!</div>
+              </div>
             </div>
+            <button class="carousel-nav-btn next-btn" id="carousel-btn-next" title="Sonraki Oyunlar" aria-label="Sonraki">›</button>
           </div>
 
           <button class="start-btn" id="start-game-btn">OYUNU BAŞLAT 🎮</button>

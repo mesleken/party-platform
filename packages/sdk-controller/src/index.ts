@@ -130,7 +130,7 @@ export class ControllerSDK {
     this.room?.send('LAUNCH_MATCH');
   }
 
-  public customizePlayer(data: { color?: string; costume?: string }) {
+  public customizePlayer(data: { color?: string; costume?: string; avatar?: string }) {
     this.room?.send('CUSTOMIZE_PLAYER', data);
   }
 

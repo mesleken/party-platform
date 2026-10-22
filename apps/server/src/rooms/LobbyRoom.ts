@@ -139,12 +139,13 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
     });
 
     // Oyuncu Renk & Kostüm Özelleştirmesi (Her oyuncu kendi görünümünü seçebilir)
-    this.onMessage('CUSTOMIZE_PLAYER', (client, message: { color?: string; costume?: string }) => {
+    this.onMessage('CUSTOMIZE_PLAYER', (client, message: { color?: string; costume?: string; avatar?: string }) => {
       const player = this.state.players.get(client.sessionId);
       if (player) {
         if (message.color) player.color = message.color;
         if (message.costume) player.costume = message.costume;
-        console.log(`[LobbyRoom] Oyuncu ${player.nickname} özelleştirildi: Renk=${player.color}, Kostüm=${player.costume}`);
+        if (message.avatar) player.avatar = message.avatar;
+        console.log(`[LobbyRoom] Oyuncu ${player.nickname} özelleştirildi: Renk=${player.color}, Kostüm=${player.costume}, Avatar=${player.avatar}`);
       }
     });
 
@@ -741,7 +742,7 @@ export class LobbyRoom extends Room<{ state: SessionStateType }> {
       if (player.isConnected) {
         player.score = 0;
         player.rank = 0;
-        this.rcRushGame?.addPlayer(player.id, player.nickname);
+        this.rcRushGame?.addPlayer(player.id, player.nickname, player.color);
       }
     });
 

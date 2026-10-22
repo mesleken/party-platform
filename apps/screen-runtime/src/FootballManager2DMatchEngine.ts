@@ -333,7 +333,7 @@ export class FootballManager2DMatchEngine {
       }
     }
 
-    // 3. Top interpolasyonu & akıcı hareket
+    // 3. Top interpolasyonu & akıcı hareket (Mıknatıs / ışınlanma hissini engelleyen yumuşak takip)
     const bdx = this.ballTargetX - this.ballX;
     const bdy = this.ballTargetY - this.ballY;
     const bdist = Math.hypot(bdx, bdy);
@@ -341,7 +341,8 @@ export class FootballManager2DMatchEngine {
       this.ballX = this.ballTargetX;
       this.ballY = this.ballTargetY;
     } else if (bdist > 0.01) {
-      const bstep = Math.min(bdist * 0.48, 2.6);
+      const maxSpeed = this.ballCarrierId ? 1.25 : 2.6;
+      const bstep = Math.min(bdist * 0.38, maxSpeed);
       this.ballX += (bdx / bdist) * bstep;
       this.ballY += (bdy / bdist) * bstep;
     }
