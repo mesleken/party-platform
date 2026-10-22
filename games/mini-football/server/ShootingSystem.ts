@@ -51,6 +51,7 @@ export class ShootingSystem {
     const shotVy = 1.2 + clampedPower * 5.0;
 
     this.possessionSystem.clearPossession();
+    this.possessionSystem.setKickCooldown(player.id, 0.45);
     this.ballSystem.launch(shotVx, shotVy, shotVz, player.id, player.team);
     return true;
   }

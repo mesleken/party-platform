@@ -39,6 +39,17 @@ const COSTUME_ITEMS = [
   { id: 'toxic_surge', name: 'Zehirli Fırtına', icon: '☣️' }
 ];
 
+const AVAILABLE_GAMES = [
+  { id: 'reaction-rush', title: 'Refleks', icon: '⚡', tag: 'Refleks' },
+  { id: 'quiz-arena', title: 'Quiz', icon: '🧠', tag: 'Bilgi' },
+  { id: 'mini-football', title: 'Futbol', icon: '⚽', tag: 'Spor' },
+  { id: 'bluff-trivia', title: 'Blöf', icon: '🎭', tag: 'Sosyal' },
+  { id: 'mini-tetris', title: 'Tetris', icon: '🧱', tag: 'Bulmaca' },
+  { id: 'lost-and-found', title: 'Lost & Found', icon: '🧸', tag: 'Co-Op' },
+  { id: 'rc-rush', title: 'RC Rush', icon: '🏎️', tag: 'Yarış' },
+  { id: 'transfer-showdown', title: 'Showdown', icon: '⚽', tag: 'Menajerlik' }
+];
+
 const GAME_METAS: Record<string, {
   icon: string;
   title: string;
@@ -488,78 +499,55 @@ export function App() {
           </div>
         )}
 
-        {/* Oyun Seçim Butonları (Host değiştirebilir) */}
+        {/* Oyun Seçim Karuseli (Host değiştirebilir - Dikey & Yatay Uyumlu Kaydırmalı Kartlar) */}
         {isHost && (
-          <div class="lobby-game-tabs">
-            <button
-              class={`lobby-tab-btn ${selectedGameId === 'reaction-rush' ? 'active' : ''}`}
-              onClick={() => handleSelectGame('reaction-rush')}
-            >
-              ⚡ Refleks
-            </button>
-            <button
-              class={`lobby-tab-btn ${selectedGameId === 'quiz-arena' ? 'active' : ''}`}
-              onClick={() => handleSelectGame('quiz-arena')}
-            >
-              🧠 Quiz
-            </button>
-            <button
-              class={`lobby-tab-btn ${selectedGameId === 'mini-football' ? 'active' : ''}`}
-              onClick={() => handleSelectGame('mini-football')}
-            >
-              ⚽ Futbol
-            </button>
-            <button
-              class={`lobby-tab-btn ${selectedGameId === 'bluff-trivia' ? 'active' : ''}`}
-              onClick={() => handleSelectGame('bluff-trivia')}
-            >
-              🎭 Blöf
-            </button>
-            <button
-              class={`lobby-tab-btn ${selectedGameId === 'mini-tetris' ? 'active' : ''}`}
-              onClick={() => handleSelectGame('mini-tetris')}
-            >
-              🧱 Tetris
-            </button>
-            <button
-              class={`lobby-tab-btn ${selectedGameId === 'lost-and-found' ? 'active' : ''}`}
-              onClick={() => handleSelectGame('lost-and-found')}
-            >
-              🧸 Lost & Found
-            </button>
-            <button
-              class={`lobby-tab-btn ${selectedGameId === 'rc-rush' ? 'active' : ''}`}
-              onClick={() => handleSelectGame('rc-rush')}
-            >
-              🏎️ RC Rush
-            </button>
-            <button
-              class={`lobby-tab-btn ${selectedGameId === 'transfer-showdown' ? 'active' : ''}`}
-              onClick={() => handleSelectGame('transfer-showdown')}
-            >
-              ⚽ Showdown
-            </button>
+          <div class="lobby-game-carousel-wrapper">
+            <div class="lobby-carousel-header">
+              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#e2e8f0' }}>🎮 Oyun Seçin:</span>
+              <span class="lobby-carousel-hint">👈 Yana Kaydır 👉</span>
+            </div>
+            <div class="lobby-game-carousel">
+              {AVAILABLE_GAMES.map((g) => {
+                const isSelected = selectedGameId === g.id;
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    class={`lobby-carousel-card ${isSelected ? 'active' : ''}`}
+                    onClick={() => handleSelectGame(g.id)}
+                  >
+                    {isSelected && <span class="selected-badge">✓</span>}
+                    <span class="game-icon">{g.icon}</span>
+                    <span class="game-title">{g.title}</span>
+                    <span class="game-tag">{g.tag}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
         {!isHost && (
-          <div style={{ color: '#38bdf8', marginBottom: '1.2rem', fontWeight: 700 }}>
-            Seçili Oyun:{' '}
-            {selectedGameId === 'quiz-arena'
-              ? '🧠 Quiz Arena'
-              : selectedGameId === 'mini-football'
-              ? '⚽ Mini Football'
-              : selectedGameId === 'bluff-trivia'
-              ? '🎭 Bluff Trivia'
-              : selectedGameId === 'mini-tetris'
-              ? '🧱 Mini Tetris'
-              : selectedGameId === 'lost-and-found'
-              ? '🧸 Lost & Found'
-              : selectedGameId === 'rc-rush'
-              ? '🏎️ RC Rush'
-              : selectedGameId === 'transfer-showdown'
-              ? '⚽ Transfer Showdown'
-              : '⚡ Reaction Rush'}
+          <div style={{
+            background: 'rgba(56, 189, 248, 0.12)',
+            border: '1.5px solid #38bdf8',
+            borderRadius: '1rem',
+            padding: '0.7rem 1.2rem',
+            marginBottom: '1.2rem',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.8rem',
+            maxWidth: '340px'
+          }}>
+            <span style={{ fontSize: '1.8rem' }}>
+              {AVAILABLE_GAMES.find((g) => g.id === selectedGameId)?.icon || '🎮'}
+            </span>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 700 }}>SEÇİLİ OYUN (HOST SEÇİMİ)</div>
+              <div style={{ fontSize: '1.05rem', color: '#38bdf8', fontWeight: 900 }}>
+                {AVAILABLE_GAMES.find((g) => g.id === selectedGameId)?.title || 'Reaction Rush'}
+              </div>
+            </div>
           </div>
         )}
 

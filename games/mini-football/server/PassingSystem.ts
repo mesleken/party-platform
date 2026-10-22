@@ -89,6 +89,7 @@ export class PassingSystem {
     }
 
     this.possessionSystem.clearPossession();
+    this.possessionSystem.setKickCooldown(player.id, 0.7);
     this.ballSystem.launch(passVx, passVy, passVz, player.id, player.team);
     return true;
   }

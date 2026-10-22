@@ -7,13 +7,28 @@ export class PossessionSystem {
   private ball: FootballBallEntityType;
   private players: Map<string, FootballPlayerEntityType>;
 
+  private kickCooldownPlayerId = '';
+  private kickCooldownTimer = 0;
+
   constructor(ballSystem: BallSystem, players: Map<string, FootballPlayerEntityType>) {
     this.ballSystem = ballSystem;
     this.ball = ballSystem.ball;
     this.players = players;
   }
 
+  public setKickCooldown(playerId: string, durationSec = 0.65) {
+    this.kickCooldownPlayerId = playerId;
+    this.kickCooldownTimer = durationSec;
+  }
+
   public update(dt: number) {
+    if (this.kickCooldownTimer > 0) {
+      this.kickCooldownTimer -= dt;
+      if (this.kickCooldownTimer <= 0) {
+        this.kickCooldownPlayerId = '';
+      }
+    }
+
     const currentPossessor = this.ball.possessorId ? this.players.get(this.ball.possessorId) : null;
 
     // 1. If currently possessed
@@ -47,6 +62,11 @@ export class PossessionSystem {
 
     for (const player of this.players.values()) {
       if (player.isStunned) continue;
+
+      // Kicker immunity cooldown (prevents catching own pass/shot immediately)
+      if (player.id === this.kickCooldownPlayerId && this.kickCooldownTimer > 0) {
+        continue;
+      }
 
       const dx = this.ball.x - player.x;
       const dz = this.ball.z - player.z;
@@ -87,6 +107,12 @@ export class PossessionSystem {
     // Clear ball possession from any other player
     for (const p of this.players.values()) {
       p.hasBall = false;
+    }
+
+    // Possession changes to a player: clear kicker cooldown
+    if (player.id !== this.kickCooldownPlayerId) {
+      this.kickCooldownPlayerId = '';
+      this.kickCooldownTimer = 0;
     }
 
     player.hasBall = true;

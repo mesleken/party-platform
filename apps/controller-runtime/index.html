@@ -9,6 +9,35 @@
     <meta name="theme-color" content="#090d16" />
     <meta name="format-detection" content="telephone=no" />
     <title>Party Controller</title>
+    <script>
+      // Prevent double-tap zoom on iOS Safari and mobile browsers
+      (function() {
+        var lastTouchEnd = 0;
+        document.addEventListener('touchend', function(event) {
+          var now = Date.now();
+          if (now - lastTouchEnd <= 320) {
+            var target = event.target;
+            if (target && !['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
+              event.preventDefault();
+            }
+          }
+          lastTouchEnd = now;
+        }, { passive: false });
+
+        // Prevent pinch-to-zoom gesture on iOS Safari
+        document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+        document.addEventListener('gesturechange', function(e) { e.preventDefault(); });
+        document.addEventListener('gestureend', function(e) { e.preventDefault(); });
+
+        // Prevent double-click desktop/mobile zoom
+        document.addEventListener('dblclick', function(e) {
+          var target = e.target;
+          if (target && !['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
+            e.preventDefault();
+          }
+        }, { passive: false });
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>
