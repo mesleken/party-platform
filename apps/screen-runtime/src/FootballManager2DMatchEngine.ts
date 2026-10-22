@@ -47,6 +47,12 @@ export class FootballManager2DMatchEngine {
   private passType?: string;
   private passOrigin = { x: 50, y: 32 };
 
+  // Magnetic Ball Control & Trap Visuals
+  private magneticTrapPulse = 0;
+  private magneticTrapX = 50;
+  private magneticTrapY = 32;
+  private magneticTrapColor = '#facc15';
+
   // Server Highlight & Celebration
   private activeHighlightId = '';
   private goalCelebrationTimer = 0;
@@ -216,18 +222,37 @@ export class FootballManager2DMatchEngine {
         local.assists = sp.assists;
         local.action = sp.action;
         local.photoUrl = sp.photoUrl;
+        local.ovr = sp.ovr ?? local.ovr;
         local.hasBall = sp.id === serverBall.carrierId;
 
-        // Heading açısını hesapla
-        const dx = sp.targetX - local.x;
-        const dy = sp.targetY - local.y;
-        if (Math.hypot(dx, dy) > 0.3) {
-          local.heading = Math.atan2(dy, dx);
+        // Heading açısını senkronize et (sunucunun canlı oryantasyonu)
+        if (sp.heading !== undefined) {
+          local.heading = sp.heading;
+        } else {
+          const dx = sp.targetX - local.x;
+          const dy = sp.targetY - local.y;
+          if (Math.hypot(dx, dy) > 0.3) {
+            local.heading = Math.atan2(dy, dx);
+          }
         }
       }
     });
 
-    // Top Durumu: Sunucunun anlık ball.x, ball.y ve hız vektörlerini (vx, vy) takip et
+    // Top Durumu: Manyetik ilk kontrol (first touch) darbesini tespit et
+    const newCarrierId = serverBall.carrierId ?? null;
+    if (newCarrierId && newCarrierId !== this.ballCarrierId) {
+      this.magneticTrapPulse = 1.0;
+      const all = [...this.homePlayers, ...this.awayPlayers];
+      const newCarrier = all.find((p) => p.id === newCarrierId);
+      if (newCarrier) {
+        this.magneticTrapX = newCarrier.x;
+        this.magneticTrapY = newCarrier.y;
+        this.magneticTrapColor = newCarrier.teamIndex === 0 ? '#38bdf8' : '#f87171';
+      }
+    }
+    this.ballCarrierId = newCarrierId;
+
+    // Sunucunun anlık ball.x, ball.y ve hız vektörlerini (vx, vy) takip et
     if (serverBall.isMoving && this.passType !== serverBall.passType) {
       this.passOrigin = { x: this.ballX, y: this.ballY };
     }
@@ -237,7 +262,6 @@ export class FootballManager2DMatchEngine {
     this.ballFlightEndY = serverBall.targetY ?? serverBall.y;
     this.ballVx = serverBall.vx ?? 0;
     this.ballVy = serverBall.vy ?? 0;
-    this.ballCarrierId = serverBall.carrierId ?? null;
     this.ballHeight = serverBall.height;
     this.passType = serverBall.passType;
   }
@@ -314,14 +338,14 @@ export class FootballManager2DMatchEngine {
     this.homePlayers.forEach(updatePlayer);
     this.awayPlayers.forEach(updatePlayer);
 
-    // 2. Top hedefini 60fps'de ekstrapole et (snapshotlar arasında topun havada/yerde duraksamasını engeller)
+    // 2. Top hedefini 60fps'de ekstrapole et (Manyetik Kilit)
     if (this.ballCarrierId) {
       const carrier =
         this.homePlayers.find((p) => p.id === this.ballCarrierId) ||
         this.awayPlayers.find((p) => p.id === this.ballCarrierId);
       if (carrier) {
-        this.ballTargetX = carrier.x + Math.cos(carrier.heading || 0) * 0.45;
-        this.ballTargetY = carrier.y + Math.sin(carrier.heading || 0) * 0.45;
+        this.ballTargetX = carrier.x + Math.cos(carrier.heading || 0) * 0.40;
+        this.ballTargetY = carrier.y + Math.sin(carrier.heading || 0) * 0.40;
       }
     } else if (Math.hypot(this.ballVx, this.ballVy) > 0.2) {
       const remDist = Math.hypot(this.ballFlightEndX - this.ballTargetX, this.ballFlightEndY - this.ballTargetY);
@@ -333,16 +357,25 @@ export class FootballManager2DMatchEngine {
       }
     }
 
-    // 3. Top interpolasyonu & akıcı hareket (Mıknatıs / ışınlanma hissini engelleyen yumuşak takip)
+    // 3. Top interpolasyonu & Manyetik Ayakta Tutuş (Magnetic Lock)
     const bdx = this.ballTargetX - this.ballX;
     const bdy = this.ballTargetY - this.ballY;
     const bdist = Math.hypot(bdx, bdy);
-    if (bdist > 80) {
+    if (this.ballCarrierId) {
+      // Top oyuncudayken top ayağına manyetik olarak kilitlenir; asla geride sürüklenmez
+      if (bdist > 3.0) {
+        this.ballX = this.ballTargetX;
+        this.ballY = this.ballTargetY;
+      } else {
+        this.ballX += bdx * 0.75;
+        this.ballY += bdy * 0.75;
+      }
+    } else if (bdist > 80) {
       this.ballX = this.ballTargetX;
       this.ballY = this.ballTargetY;
     } else if (bdist > 0.01) {
-      const maxSpeed = this.ballCarrierId ? 1.25 : 2.6;
-      const bstep = Math.min(bdist * 0.38, maxSpeed);
+      const maxSpeed = 2.8;
+      const bstep = Math.min(bdist * 0.42, maxSpeed);
       this.ballX += (bdx / bdist) * bstep;
       this.ballY += (bdy / bdist) * bstep;
     }
@@ -624,13 +657,43 @@ export class FootballManager2DMatchEngine {
 
       ctx.save();
 
-      // Topa sahip oyuncuda parlayan altın halka
+      // Manyetik Top Kontrolü (Magnetic Possession Field & Tether)
       if (p.hasBall) {
-        const pulse = 1.0 + Math.sin(this.globalTick * 8) * 0.25;
+        const pulse = 1.0 + Math.sin(this.globalTick * 9) * 0.22;
+        // 1. Dış Manyetik Alan Halkası (Geniş Parlama)
         ctx.beginPath();
-        ctx.arc(px, py, tokenRadius * 1.55 * pulse, 0, Math.PI * 2);
+        ctx.arc(px, py, tokenRadius * 1.85 * pulse, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(250, 204, 21, 0.45)';
+        ctx.lineWidth = 3.5;
+        ctx.stroke();
+
+        // 2. İç Manyetik Nabız Halkası
+        ctx.beginPath();
+        ctx.arc(px, py, tokenRadius * 1.45, 0, Math.PI * 2);
         ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+
+        // 3. Top İle Oyuncu Arasındaki Manyetik Çekim Bağı (Magnetic Tether)
+        const ballScreenX = toX(this.ballX);
+        const ballScreenY = toY(this.ballY) - this.ballHeight * 8;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(ballScreenX, ballScreenY);
+        ctx.strokeStyle = 'rgba(250, 204, 21, 0.85)';
+        ctx.lineWidth = 2.0;
+        ctx.setLineDash([3, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // Yıldız Oyuncu Vurgusu (86+ OVR)
+      const isStarPlayer = (p.ovr || 80) >= 86;
+      if (isStarPlayer && !p.hasBall) {
+        ctx.beginPath();
+        ctx.arc(px, py, tokenRadius + 2.5, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(250, 204, 21, 0.65)';
+        ctx.lineWidth = 1.5;
         ctx.stroke();
       }
 
@@ -698,7 +761,7 @@ export class FootballManager2DMatchEngine {
 
       // 2. Oyuncu İsim ve Reyting Etiketi (FM Name & Rating Tag)
       const goalIcon = p.goals > 0 ? '⚽ ' : '';
-      const tagText = `${goalIcon}${p.shortName}`;
+      const tagText = `${goalIcon}${p.shortName}${isStarPlayer ? ' ⭐' : ''}`;
       ctx.font = `800 ${Math.max(8, Math.round(tokenRadius * 0.65))}px Inter, system-ui, sans-serif`;
       const textWidth = ctx.measureText(tagText).width;
       const labelH = Math.max(9, tokenRadius * 0.85);
@@ -708,12 +771,25 @@ export class FootballManager2DMatchEngine {
       ctx.beginPath();
       ctx.roundRect(px - textWidth / 2 - 4, labelY, textWidth + 8, labelH, 3);
       ctx.fill();
-      ctx.strokeStyle = isHome ? '#38bdf8' : '#f87171';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = isStarPlayer ? '#facc15' : isHome ? '#38bdf8' : '#f87171';
+      ctx.lineWidth = isStarPlayer ? 1.5 : 1;
       ctx.stroke();
 
       ctx.fillStyle = '#ffffff';
       ctx.fillText(tagText, px, labelY + labelH / 2 + 0.5);
+
+      // Manyetik Top Hakimiyeti Rozeti
+      if (p.hasBall) {
+        const ctrlTag = '⚡ KONTROL';
+        ctx.font = '900 8px Inter, system-ui, sans-serif';
+        const ctrlW = ctx.measureText(ctrlTag).width;
+        ctx.fillStyle = 'rgba(234, 179, 8, 0.95)';
+        ctx.beginPath();
+        ctx.roundRect(px - ctrlW / 2 - 3, py - tokenRadius - 13, ctrlW + 6, 11, 2);
+        ctx.fill();
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText(ctrlTag, px, py - tokenRadius - 7.5);
+      }
 
       ctx.restore();
     });
@@ -730,6 +806,42 @@ export class FootballManager2DMatchEngine {
     const sx = toX(this.ballX);
     const sy = toY(this.ballY);
     const radius = Math.max(6.5, Math.min(10.5, this.canvas.width * 0.007));
+
+    // 0. Manyetik İlk Kontrol / Yutma Şok Dalgası (Magnetic Trap First-Touch Shockwave)
+    if (this.magneticTrapPulse > 0) {
+      this.magneticTrapPulse = Math.max(0, this.magneticTrapPulse - 0.035);
+      const trapProgress = 1.0 - this.magneticTrapPulse;
+      const tx = toX(this.magneticTrapX);
+      const ty = toY(this.magneticTrapY);
+      const ringRadius = radius * 1.6 + trapProgress * radius * 4.2;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(tx, ty, ringRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = this.magneticTrapColor;
+      ctx.globalAlpha = this.magneticTrapPulse * 0.95;
+      ctx.lineWidth = 3.5 * this.magneticTrapPulse;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(tx, ty, ringRadius * 0.65, 0, Math.PI * 2);
+      ctx.strokeStyle = '#facc15';
+      ctx.globalAlpha = this.magneticTrapPulse * 0.8;
+      ctx.lineWidth = 2.0 * this.magneticTrapPulse;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Manyetik Tutuş Halkası (Ball Magnetic Containment Ring)
+    if (this.ballCarrierId) {
+      ctx.beginPath();
+      ctx.arc(sx, sy - this.ballHeight * 8, radius * 1.55, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.9)';
+      ctx.lineWidth = 2.2;
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
 
     // 1. Dinamik Hız İzi (Speed Streaks)
     this.ballTrail.forEach((t) => {

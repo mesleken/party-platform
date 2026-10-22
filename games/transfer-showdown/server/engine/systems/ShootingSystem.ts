@@ -88,7 +88,8 @@ export class ShootingSystem {
     }
 
     // xG Hesabı (Oyuncunun efektif şut kalitesi ve OVR bonusu dahil)
-    const effectiveSho = clamp(eff.sho * 0.75 + (shooter.effOvr || shooter.ovr) * 0.25, 50, 99);
+    const effectiveSho = clamp(eff.sho * 0.70 + (shooter.effOvr || shooter.ovr) * 0.30, 48, 99);
+    const shooterPower = effectiveSho;
     const xgShotType: 'NORMAL' | 'HEADER' | 'VOLLEY' | 'LONG_SHOT' =
       shotType === 'HEADER' || shotType === 'VOLLEY' || shotType === 'LONG_SHOT' ? shotType : 'NORMAL';
     const xgAtShot = ExpectedGoalsModel.calculateXg({
@@ -107,15 +108,17 @@ export class ShootingSystem {
       assisterId = lastPass.passerId;
     }
 
-    // Şutun kaleyi bulma olasılığı (SHO ve OVR yüksek yıldızlar çerçeveyi çok daha yüksek oranda bulur)
-    const onTargetProb = clamp(0.58 + (effectiveSho - 74) * 0.011 + (isOneOnOne ? 0.14 : 0), 0.42, 0.88);
+    // Şutun kaleyi bulma olasılığı: Kaliteli şutörler çerçeveyi çok daha yüksek oranda bulur (85+ SHO oyuncular %85-%96)
+    const onTargetProb = clamp(0.60 + (effectiveSho - 72) * 0.015 + (isOneOnOne ? 0.16 : 0), 0.36, 0.96);
     const isOnTarget = rng.chance(onTargetProb);
 
     const targetY = isOnTarget
       ? 32.0 + (rng.chance(0.5) ? 1 : -1) * rng.range(1.2, 3.8)
       : 32.0 + (rng.chance(0.5) ? 1 : -1) * rng.range(4.8, 7.5);
 
-    const flightDurationSec = clamp(distToGoal / (29.0 + (effectiveSho - 75) * 0.18), 0.28, 0.56);
+    // Sert ve teknik vuruşlar kaleye daha hızlı varır (uçuş süresi şut gücüne göre kısalır)
+    const shotSpeed = 29.0 + (effectiveSho - 70) * 0.28;
+    const flightDurationSec = clamp(distToGoal / shotSpeed, 0.24, 0.52);
 
     const shotContext: ShotContext = {
       eventId,
@@ -131,7 +134,8 @@ export class ShootingSystem {
       maxHeight: shotType === 'HEADER' ? 0.85 : shotType === 'LONG_SHOT' ? 0.65 : 0.35,
       goalkeeperId: gk?.id || null,
       outcome: 'GOAL',
-      isOnTarget
+      isOnTarget,
+      shooterPower
     };
 
     void nearestDef;

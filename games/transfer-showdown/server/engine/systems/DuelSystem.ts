@@ -25,14 +25,14 @@ export class DuelSystem {
 
     const diff = defScore - attScore;
     // Dribbling yeteneğine göre hassasiyet
-    const driPenalty = attEff.dri < 75 ? (75 - attEff.dri) * 0.010 : 0;
-    const driBonus = attEff.dri >= 84 ? (attEff.dri - 84) * 0.008 : 0;
+    const driPenalty = attEff.dri < 74 ? (74 - attEff.dri) * 0.012 : 0;
+    const driBonus = attEff.dri >= 82 ? (attEff.dri - 82) * 0.012 : 0;
 
     // Üst üste çalım yorgunluğu: Aynı pozisyonda birden fazla savunmacıyı geçmeye çalışmak giderek zorlaşır
     const multiTakeOnPenalty = consecutiveDribbles * 0.16;
 
-    // Temel müdahale şansı: 0.35'ten 0.55'e yükseltildi (nerf uygulandı)
-    const tackleProb = clamp(0.55 + diff * 0.010 + driPenalty - driBonus + multiTakeOnPenalty, 0.32, 0.88);
+    // Reyting farkı ikili mücadelede belirleyici rol oynar
+    const tackleProb = clamp(0.50 + diff * 0.015 + driPenalty - driBonus + multiTakeOnPenalty, 0.18, 0.88);
 
     defender.tackleCooldownSec = 1.8;
 
@@ -86,10 +86,11 @@ export class DuelSystem {
     if ((defender.stunSec ?? 0) > 0.05 || (defender.tackleCooldownSec ?? 0) > 0.5) return false;
 
     const d = dist(defender.x, defender.y, ballPos.x, ballPos.y);
-    if (d > 1.45) return false;
+    if (d > 1.55) return false;
 
     const defEff = defender.effStats || defender.stats;
-    const interceptProb = clamp(0.17 + (defEff.def - 76.0) * 0.0065, 0.09, 0.42);
+    const defRating = defEff.def * 0.65 + (defender.effOvr || defender.ovr) * 0.35;
+    const interceptProb = clamp(0.18 + (defRating - 74.0) * 0.011, 0.08, 0.52);
     return rng.chance(interceptProb);
   }
 }

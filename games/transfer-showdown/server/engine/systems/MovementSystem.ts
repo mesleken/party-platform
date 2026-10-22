@@ -44,20 +44,20 @@ export class MovementSystem {
           (p.urgency ?? 0.7) >= 0.88);
 
       const urgencyMod = 0.80 + (p.urgency ?? 0.75) * 0.28;
-      // Top süren oyuncunun hızı: pac ve dri yeteneklerine göre ölçeklenir (topla koşu, topsuz deparın hafif altındadır)
+      // Top süren oyuncunun hızı: dri, pac ve ovr yeteneklerine göre ölçeklenir
       const carrySkillMod = isCarrying
-        ? clamp(0.78 + (eff.dri - 70) * 0.0050 + (eff.pac - 70) * 0.0040, 0.70, 0.98)
+        ? clamp(0.80 + (eff.dri - 68) * 0.0065 + (eff.pac - 68) * 0.0045, 0.72, 1.05)
         : 1.0;
-      const sprintMod = isDivingGk ? 1.48 : isCarrying ? carrySkillMod * 1.06 : isSprinting ? 1.28 : urgencyMod;
+      const sprintMod = isDivingGk ? 1.50 : isCarrying ? carrySkillMod * 1.08 : isSprinting ? 1.32 : urgencyMod;
       const staminaFactor = Math.max(0.68, 0.75 + (p.stamina / 100.0) * 0.25);
 
-      // 1. Maksimum Hız (saha birimi / sn): Gerçekçi hız farkı
-      const baseMaxSpeed = 10.6 + (eff.pac - 70.0) * 0.065;
+      // 1. Maksimum Hız (saha birimi / sn): Reytingler sahada belirgin hız farkı yaratır (65 PAC -> 9.8, 95 PAC -> 13.25)
+      const baseMaxSpeed = 9.8 + (eff.pac - 65.0) * 0.115;
       p.maxSpeed = baseMaxSpeed * sprintMod * staminaFactor;
 
-      // 2. Maksimum İvmelenme (saha birimi / sn^2): pac + dri + ovr bazlı patlayıcılık
-      const agility = eff.pac * 0.45 + eff.dri * 0.40 + (p.effOvr || p.ovr) * 0.15;
-      p.maxAcceleration = (isDivingGk ? 38.0 : 25.0) + (agility - 70.0) * 0.22;
+      // 2. Maksimum İvmelenme (saha birimi / sn^2): pac + dri + ovr bazlı patlayıcılık ve çeviklik
+      const agility = eff.pac * 0.40 + eff.dri * 0.40 + (p.effOvr || p.ovr) * 0.20;
+      p.maxAcceleration = (isDivingGk ? 44.0 : 22.0) + (agility - 65.0) * 0.35;
 
       if (distToTarget > 0.06) {
         const dirX = dx / distToTarget;
@@ -109,9 +109,9 @@ export class MovementSystem {
 
       // 4. Kondisyon Tüketimi (PHY niteliği yüksek oyuncular daha geç yorulur)
       const team = teams[p.teamIndex];
-      let pressMultiplier = team.tactics.playstyle === 'high_press' ? 1.28 : 1.0;
-      if (team.mentality === 'all_out_attack') pressMultiplier *= 1.18;
-      if (team.activeShout?.shout === 'demand_more') pressMultiplier *= 1.2;
+      let pressMultiplier = team?.tactics?.playstyle === 'high_press' ? 1.28 : 1.0;
+      if (team?.mentality === 'all_out_attack') pressMultiplier *= 1.18;
+      if (team?.activeShout?.shout === 'demand_more') pressMultiplier *= 1.2;
       const phyResist = clamp(1.15 - (eff.phy - 70) * 0.006, 0.75, 1.25);
       const sprintCost = isSprinting ? 1.45 : 0.75;
 

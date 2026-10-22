@@ -1273,22 +1273,24 @@ export class FMMatchEngine {
       }
     }
 
-    // Alıcı yakındaysa (<= 0.85 birim) ve yüzü topun geliş yönüne dönükse temiz kontrol
+    // Manyetik Top Kontrolü (Magnetic Trap & Adhesion):
+    // Oyuncunun reytingine (DRI + PAS + OVR) göre topla buluşma ve manyetik kontrol yarıçapı
+    const effRec = receiver.effStats || receiver.stats;
+    const controlPower = effRec.dri * 0.50 + effRec.pas * 0.25 + (receiver.effOvr || receiver.ovr) * 0.25;
+    const magneticTrapRadius = clamp(1.20 + (controlPower - 75) * 0.025, 1.0, 1.85);
+
     const distToArrival = dist(receiver.x, receiver.y, pass.target.x, pass.target.y);
     const angleToArrival = Math.atan2(pass.target.y - receiver.y, pass.target.x - receiver.x);
-    const headingDiff = Math.abs(
-      Math.atan2(
-        Math.sin(angleToArrival - (receiver.heading || 0)),
-        Math.cos(angleToArrival - (receiver.heading || 0))
-      )
-    );
-    const isFacingArrival = headingDiff <= Math.PI * 0.48; // ~85 derece ön görüş açısı
 
-    if (distToArrival <= 0.85 && isFacingArrival) {
+    // Alıcı manyetik kontrol yarıçapı içindeyse topu temizce ayağına mıknatıs gibi alır
+    if (distToArrival <= magneticTrapRadius) {
+      receiver.heading = angleToArrival;
+      receiver.x = clamp(pass.target.x - Math.cos(receiver.heading) * 0.32, 2.0, 98.0);
+      receiver.y = clamp(pass.target.y - Math.sin(receiver.heading) * 0.32, 2.0, 62.0);
       this.ballSystem.setControlled(receiver);
     } else {
-      // Top oyuncunun arkasında veya uzağında kaldıysa:
-      // Top pasın orijinal geliş momentumuyla doğal şekilde yuvarlanır, asla oyuncunun sırtına doğru çekilmez!
+      // Top oyuncunun kontrol yarıçapından uzakta kaldıysa:
+      // Top pasın orijinal geliş momentumuyla doğal şekilde yuvarlanır
       const passDx = pass.target.x - pass.origin.x;
       const passDy = pass.target.y - pass.origin.y;
       const passLen = Math.hypot(passDx, passDy) || 1;

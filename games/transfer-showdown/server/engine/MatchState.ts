@@ -74,6 +74,7 @@ export interface ShotContext {
   outcome: ShotOutcome;
   blockerId?: string;
   isOnTarget: boolean;
+  shooterPower?: number;
 }
 
 export type RestartType = 'KICK_OFF' | 'GOAL_KICK' | 'CORNER' | 'FREE_KICK' | 'THROW_IN' | 'PENALTY';

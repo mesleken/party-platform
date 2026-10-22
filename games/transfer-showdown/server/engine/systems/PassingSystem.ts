@@ -319,18 +319,18 @@ export class PassingSystem {
       };
     }
 
-    // 2. İLK KONTROL (FIRST TOUCH) KONTROLÜ
+    // 2. İLK KONTROL (FIRST TOUCH) & MANYETİK TOP YUTMA (MAGNETIC TRAP)
     const eff = receiver.effStats || receiver.stats;
-    const controlRating = eff.dri * 0.65 + eff.pas * 0.35;
-    let controlProb = clamp(0.86 + (controlRating - 75.0) * 0.006, 0.72, 0.99);
+    const controlRating = eff.dri * 0.55 + eff.pas * 0.25 + (receiver.effOvr || receiver.ovr) * 0.20;
+    let controlProb = clamp(0.90 + (controlRating - 75.0) * 0.007, 0.82, 0.995);
 
     if (pass.passType === 'LONG' || pass.passType === 'CROSS') {
       controlProb -= 0.04;
     }
     if (nearestOpponentDist < 2.2) {
-      // Fizik gücü yüksek oyuncular baskı altında topu daha iyi saklar
-      const shieldBonus = (eff.phy - 75.0) * 0.003;
-      controlProb = clamp(controlProb * 0.9 + shieldBonus, 0.68, 0.98);
+      // Fizik gücü ve top kontrolü yüksek yıldızlar baskı altında topu mıknatıs gibi saklar
+      const shieldBonus = ((eff.phy + eff.dri) * 0.5 - 75.0) * 0.005;
+      controlProb = clamp(controlProb * 0.94 + shieldBonus, 0.76, 0.99);
     }
 
     if (rng.chance(controlProb)) {
